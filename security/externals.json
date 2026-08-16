@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "generated": "2026-08-15",
+  "note": "Заполняется Агентом 2 по брифу docs/agents/briefs/agent2-supply-chain.md. Сейчас содержит только то, что установлено оркестратором достоверно.",
+  "items": [
+    {
+      "id": "electerm-web",
+      "kind": "git",
+      "official_source": "https://github.com/electerm/electerm-web",
+      "pin": "commit:pending",
+      "license": "MIT",
+      "network_at_runtime": [
+        "ai.electerm.org (ИИ-ассистент по умолчанию)",
+        "github.com/gitee.com (синхронизация закладок в gist)"
+      ],
+      "install_scripts": true,
+      "verdict": "pin",
+      "notes": "Требует Node 24+, нативные модули. Внешние вызовы подлежат отключению на этапе clean-build."
+    },
+    {
+      "id": "electerm-one-line-web-installer",
+      "kind": "script",
+      "official_source": "https://electerm.org/scripts/one-line-web.sh",
+      "pin": "none",
+      "license": "unknown",
+      "network_at_runtime": [],
+      "install_scripts": true,
+      "verdict": "remove",
+      "notes": "Рекомендуемый в README способ установки: скрипт с сайта проекта, вне GitHub, без контрольной суммы. Не используем: собираем из исходников."
+    },
+    {
+      "id": "ironrdp-wasm",
+      "kind": "git",
+      "official_source": "https://github.com/electerm/ironrdp-wasm",
+      "pin": "commit:pending",
+      "license": "MIT",
+      "network_at_runtime": [],
+      "install_scripts": true,
+      "verdict": "pin",
+      "notes": "WASM-сборка Devolutions IronRDP. Требует Rust toolchain и wasm-pack; собираем сами, prebuilt не берём."
+    },
+    {
+      "id": "websockify",
+      "kind": "git",
+      "official_source": "https://github.com/novnc/websockify",
+      "pin": "none",
+      "license": "LGPL-3.0",
+      "network_at_runtime": [],
+      "install_scripts": false,
+      "verdict": "keep",
+      "notes": "Код не копируем из-за LGPL: берём только подход (мост WebSocket-TCP и маршрутизация по токену)."
+    },
+    {
+      "id": "goproxy",
+      "kind": "git",
+      "official_source": "https://github.com/snail007/goproxy",
+      "pin": "none",
+      "license": "GPL-3.0",
+      "network_at_runtime": [],
+      "install_scripts": true,
+      "verdict": "remove",
+      "notes": "В контур не вносим: дублирует WireGuard и Cloudflare Tunnel, штатная установка через curl|bash, GPL-3.0 несовместим с закрытым распространением."
+    }
+  ]
+}

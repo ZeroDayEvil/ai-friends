@@ -1,0 +1,63 @@
+# Web-узел платформы.
+#
+# Публичных портов нет: доступ снаружи идёт через Cloudflare Tunnel, который
+# устанавливает исходящее соединение и обращается к приложению по внутренней
+# сети docker. Поэтому здесь нет ни 80, ни 443, ни reverse-proxy.
+#
+# Образы задаются переменными и обязаны быть указаны с digest, а не тегом:
+# тег можно перезаписать, digest нет. См. security/README.md.
+
+name: electerm-platform
+
+services:
+  app:
+    image: ${APP_IMAGE:?APP_IMAGE не задан, укажите образ с digest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      ENABLE_AUTH: "1"
+      DISABLE_LOCAL_TERMINAL: "1"
+      PORT: "5577"
+    # Только loopback. Причина принципиальная: docker публикует порты через
+    # собственные правила iptables в цепочке DOCKER, которая обрабатывается
+    # раньше правил ufw, поэтому "ufw deny incoming" опубликованный порт не
+    # закрывает. Привязка к 127.0.0.1 снимает вопрос: порт физически не слушает
+    # на внешнем интерфейсе. Наружу его отдаёт только cloudflared с этого хоста.
+    ports:
+      - "127.0.0.1:5577:5577"
+    volumes:
+      - app-data:/app/database
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5577/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # На время одиночного узла база живёт рядом. При разделении ролей сервис
+  # убирается, а приложение получает DATABASE_URL внешнего сервера БД --
+  # именно поэтому подключение задаётся переменной, а не именем контейнера.
+  db:
+    image: ${POSTGRES_IMAGE:?POSTGRES_IMAGE не задан, укажите образ с digest}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-electerm}
+      POSTGRES_USER: ${POSTGRES_USER:-electerm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD не задан}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-electerm}"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  app-data:
+  db-data:
+
+networks:
+  internal:
+    driver: bridge

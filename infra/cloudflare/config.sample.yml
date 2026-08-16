@@ -1,0 +1,23 @@
+# Копия для /etc/cloudflared/config.yml на web-узле.
+# Идентификатор туннеля и файл учётных данных выдаются при создании туннеля.
+
+tunnel: REPLACE_WITH_TUNNEL_ID
+credentials-file: /etc/cloudflared/REPLACE_WITH_TUNNEL_ID.json
+
+# Метрики только на loopback: наружу их отдавать не нужно.
+metrics: 127.0.0.1:2000
+
+# Самообновление выключено: версия cloudflared меняется только через apt
+# отдельным изменением, иначе на узел прилетит неотрёвьюенный бинарник.
+no-autoupdate: true
+
+ingress:
+  # Приложение слушает только на loopback узла (см. infra/vps/docker-compose.yml).
+  - hostname: REPLACE_WITH_HOSTNAME
+    service: http://127.0.0.1:5577
+    originRequest:
+      connectTimeout: 30s
+      noTLSVerify: false
+
+  # Всё, что не совпало с правилами выше, отбивается, а не проксируется куда-то.
+  - service: http_status:404

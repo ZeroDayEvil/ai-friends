@@ -1,0 +1,25 @@
+# Секреты и локальное состояние
+.env
+*.env
+!*.sample.env
+!.env.sample
+*.key
+*.pem
+!infra/**/*.sample.pem
+wg-*.conf
+secrets/
+
+# Форк electerm-web ведётся отдельным репозиторием (собственная история upstream),
+# сюда клонируется рабочая копия и в этот репозиторий не коммитится.
+apps/
+
+# Сборка и зависимости
+node_modules/
+dist/
+build/
+*.log
+
+# Windows/редакторы
+Thumbs.db
+desktop.ini
+.DS_Store

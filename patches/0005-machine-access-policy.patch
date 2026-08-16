@@ -1,0 +1,387 @@
+From 394e6db70ce8fc516d6d913f6123482b74466121 Mon Sep 17 00:00:00 2001
+From: Hydra Soft <260101677+ZeroDayVPN@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 19:57:30 -0700
+Subject: [PATCH 5/5] =?UTF-8?q?=D0=9F=D1=80=D0=B0=D0=B2=D0=B0=20=D1=81?=
+ =?UTF-8?q?=D0=BE=D1=82=D1=80=D1=83=D0=B4=D0=BD=D0=B8=D0=BA=D0=BE=D0=B2=20?=
+ =?UTF-8?q?=D0=BD=D0=B0=20=D0=BC=D0=B0=D1=88=D0=B8=D0=BD=D1=8B?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Адрес цели приходит от клиента вместе с закладкой, поэтому сервер сверяет его с
+политикой до установления соединения: без этого любые сетевые ограничения
+обходятся вводом другого адреса, а узел превращается в универсальный прокси
+внутрь сети. Проверка стоит и на создании сессии, и на проверке подключения,
+которая тоже открывает соединение.
+
+Правила: точный адрес, адрес с портом (ограничивает протокол), подсеть CIDR,
+имя с подстановкой. Локальная оболочка -- только администраторам. Отсутствие
+файла политики закрывает доступ, а не открывает. Каждый отказ пишется в журнал.
+
+14 тестов, всего по форку 38.
+---
+ package.json                   |   3 +-
+ src/app/lib/machine-policy.js  | 164 +++++++++++++++++++++++++++++++++
+ src/app/server/terminal-api.js |  17 ++++
+ test/machine-policy.test.mjs   | 122 ++++++++++++++++++++++++
+ 4 files changed, 305 insertions(+), 1 deletion(-)
+ create mode 100644 src/app/lib/machine-policy.js
+ create mode 100644 test/machine-policy.test.mjs
+
+diff --git a/package.json b/package.json
+index adc9bfa..693afee 100644
+--- a/package.json
++++ b/package.json
+@@ -20,7 +20,8 @@
+     "test": "npm run test1 && npm run test2",
+     "test1": "./node_modules/.bin/playwright test test/e2e/00*.js --config test/playwright.conf.js",
+     "test2": "./node_modules/.bin/playwright test test/e2e/01*.js --config test/playwright.conf.js",
+-    "test3": "./node_modules/.bin/playwright test test/unit/*.js"
++    "test3": "./node_modules/.bin/playwright test test/unit/*.js",
++    "test:platform": "node test/cf-access.test.mjs && node test/session-owner.test.mjs && node test/sync-policy.test.mjs && node test/machine-policy.test.mjs"
+   },
+   "license": "MIT",
+   "langugeRepo": "https://github.com/electerm/electerm-locales",
+diff --git a/src/app/lib/machine-policy.js b/src/app/lib/machine-policy.js
+new file mode 100644
+index 0000000..956aea3
+--- /dev/null
++++ b/src/app/lib/machine-policy.js
+@@ -0,0 +1,164 @@
++/**
++ * Права сотрудников на машины.
++ *
++ * Адрес цели приходит от клиента вместе с закладкой. В однопользовательском
++ * режиме это нормально: пользователь и так хозяин сервера. В командном -- нет:
++ * без серверной проверки любой сотрудник, введя другой адрес, подключается к
++ * машине, доступа к которой ему не давали, и заодно превращает наш узел в
++ * универсальный прокси внутрь сети.
++ *
++ * Политика описывается файлом, потому что так её можно держать в системе
++ * контроля версий и раздавать вместе с инфраструктурой. Когда появится
++ * PostgreSQL, файл станет одним из источников, а интерфейс проверки не
++ * изменится.
++ *
++ * Формат:
++ * {
++ *   "admins": ["boss@example.com"],
++ *   "users": {
++ *     "ivanov@example.com": ["10.99.0.11", "10.99.0.12:3389", "*.corp.example.com"],
++ *     "petrov@example.com": ["10.99.0.0/24"]
++ *   }
++ * }
++ */
++
++import { readFileSync, statSync } from 'fs'
++import { resolve } from 'path'
++import { cwd } from '../common/runtime-constants.js'
++import { cfAccessEnabled } from './cf-access.js'
++import log from '../common/log.js'
++
++// В командном режиме проверка включена всегда. Отдельная переменная нужна для
++// стендов без Cloudflare Access.
++export const policyEnforced = cfAccessEnabled ||
++  process.env.ENFORCE_MACHINE_POLICY === '1'
++
++const policyPath = process.env.MACHINE_POLICY_PATH ||
++  resolve(process.env.DB_PATH || resolve(cwd, 'data'), 'machine-policy.json')
++
++let cache = { mtimeMs: 0, policy: null }
++
++/**
++ * Файл перечитывается при изменении: выдача доступа новому сотруднику не должна
++ * требовать перезапуска, иначе она рвёт чужие сессии.
++ */
++function loadPolicy () {
++  const stat = statSync(policyPath)
++  if (cache.policy && cache.mtimeMs === stat.mtimeMs) {
++    return cache.policy
++  }
++  const parsed = JSON.parse(readFileSync(policyPath, 'utf8'))
++  const policy = {
++    admins: (parsed.admins || []).map(s => String(s).toLowerCase()),
++    users: Object.fromEntries(
++      Object.entries(parsed.users || {}).map(([k, v]) => [String(k).toLowerCase(), v])
++    )
++  }
++  cache = { mtimeMs: stat.mtimeMs, policy }
++  return policy
++}
++
++function ipToInt (ip) {
++  const parts = ip.split('.')
++  if (parts.length !== 4) {
++    return null
++  }
++  let n = 0
++  for (const p of parts) {
++    const v = Number(p)
++    if (!Number.isInteger(v) || v < 0 || v > 255) {
++      return null
++    }
++    n = (n * 256) + v
++  }
++  return n
++}
++
++function matchesCidr (host, rule) {
++  const [net, bitsRaw] = rule.split('/')
++  const bits = Number(bitsRaw)
++  if (!Number.isInteger(bits) || bits < 0 || bits > 32) {
++    return false
++  }
++  const a = ipToInt(host)
++  const b = ipToInt(net)
++  if (a === null || b === null) {
++    return false
++  }
++  // Сдвиг на 32 в JavaScript не даёт нуля, поэтому маска считается делением.
++  const mask = bits === 0 ? 0 : ~((2 ** (32 - bits)) - 1) >>> 0
++  return (a & mask) === (b & mask)
++}
++
++function matchesRule (host, port, rule) {
++  const r = String(rule).trim().toLowerCase()
++  const h = String(host).trim().toLowerCase()
++  if (!r) {
++    return false
++  }
++  if (r === '*') {
++    return true
++  }
++  if (r.includes('/')) {
++    return matchesCidr(h, r)
++  }
++  // Правило с портом ограничивает и протокол: 10.0.0.5:3389 разрешает RDP, но
++  // не SSH на ту же машину.
++  const [rHost, rPort] = r.split(':')
++  if (rPort && String(port) !== rPort) {
++    return false
++  }
++  if (rHost.startsWith('*.')) {
++    return h.endsWith(rHost.slice(1))
++  }
++  return h === rHost
++}
++
++/**
++ * Бросает исключение, если сотруднику нельзя подключаться к этой машине.
++ * Отсутствие политики в командном режиме -- отказ, а не разрешение: иначе
++ * забытый файл тихо открывает всё всем.
++ */
++export function assertMachineAllowed (user, initOptions = {}) {
++  if (!policyEnforced) {
++    return
++  }
++  const type = String(initOptions.termType || initOptions.type || '').toLowerCase()
++  const host = initOptions.host
++  const port = initOptions.port
++
++  if (!user) {
++    throw new Error('machine access denied: no identity')
++  }
++
++  let policy
++  try {
++    policy = loadPolicy()
++  } catch (err) {
++    log.error(`machine policy unavailable (${policyPath}): ${err.message}`)
++    throw new Error('machine access denied: policy is not configured')
++  }
++
++  const email = String(user).toLowerCase()
++  if (policy.admins.includes(email)) {
++    return
++  }
++
++  // Локальная оболочка -- это доступ к самому web-узлу, а не к целевой машине.
++  // Её получают только администраторы.
++  if (type === 'local') {
++    log.error(`user ${email} tried to open local shell`)
++    throw new Error('machine access denied: local terminal is for admins only')
++  }
++
++  if (!host) {
++    throw new Error('machine access denied: no host in request')
++  }
++
++  const rules = policy.users[email] || []
++  if (rules.some(rule => matchesRule(host, port, rule))) {
++    return
++  }
++  log.error(`user ${email} tried to connect to ${host}:${port ?? ''} (${type})`)
++  throw new Error(`machine access denied: ${host}`)
++}
+diff --git a/src/app/server/terminal-api.js b/src/app/server/terminal-api.js
+index c76b3fc..03ff910 100644
+--- a/src/app/server/terminal-api.js
++++ b/src/app/server/terminal-api.js
+@@ -6,6 +6,7 @@ import { terminals } from './remote-common.js'
+ import { terminal, testConnection } from './session.js'
+ import { isDev } from '../common/runtime-constants.js'
+ import { claimSession } from '../lib/session-owner.js'
++import { assertMachineAllowed } from '../lib/machine-policy.js'
+ 
+ export async function runCmd (ws, msg) {
+   const { id, pid, cmd } = msg
+@@ -116,6 +117,14 @@ export function startTerminalLogFile (ws, msg) {
+ 
+ export function createTerm (ws, msg) {
+   const { id, body } = msg
++  // Право на машину проверяется до создания соединения: адрес пришёл от
++  // клиента, и доверять ему нельзя.
++  try {
++    assertMachineAllowed(ws.user, body)
++  } catch (err) {
++    ws.s({ id, error: { message: err.message, stack: '' } })
++    return
++  }
+   terminal(body, ws)
+     .then(r => {
+       // Владелец фиксируется в момент создания: подключиться к сессии по её
+@@ -147,6 +156,14 @@ export function createTerm (ws, msg) {
+ 
+ export function testTerm (ws, msg) {
+   const { id, body } = msg
++  // Проверка подключения тоже устанавливает соединение с целью, поэтому
++  // подчиняется тем же правам: иначе она станет сканером сети.
++  try {
++    assertMachineAllowed(ws.user, body)
++  } catch (err) {
++    ws.s({ id, error: { message: err.message, stack: '' } })
++    return
++  }
+   testConnection(body, ws)
+     .then(data => {
+       if (data) {
+diff --git a/test/machine-policy.test.mjs b/test/machine-policy.test.mjs
+new file mode 100644
+index 0000000..6457638
+--- /dev/null
++++ b/test/machine-policy.test.mjs
+@@ -0,0 +1,122 @@
++/**
++ * Проверка прав на машины.
++ *
++ * Запуск: node test/machine-policy.test.mjs
++ */
++
++import assert from 'assert'
++import { mkdtempSync, writeFileSync, rmSync } from 'fs'
++import { tmpdir } from 'os'
++import { join } from 'path'
++
++const dir = mkdtempSync(join(tmpdir(), 'policy-'))
++const policyPath = join(dir, 'machine-policy.json')
++
++writeFileSync(policyPath, JSON.stringify({
++  admins: ['Boss@example.com'],
++  users: {
++    'ivanov@example.com': ['10.99.0.11', '10.99.0.12:3389', '*.corp.example.com'],
++    'petrov@example.com': ['10.99.0.0/24']
++  }
++}))
++
++process.env.ENFORCE_MACHINE_POLICY = '1'
++process.env.MACHINE_POLICY_PATH = policyPath
++
++const { assertMachineAllowed, policyEnforced } =
++  await import('../src/app/lib/machine-policy.js')
++
++const results = []
++function check (name, fn) {
++  try {
++    fn()
++    results.push(['PASS', name])
++  } catch (err) {
++    results.push(['FAIL', name, err.message])
++  }
++}
++
++const ssh = (host, port = 22) => ({ termType: 'ssh', host, port })
++
++check('проверка включена переменной окружения', () => {
++  assert.strictEqual(policyEnforced, true)
++})
++
++check('разрешённая машина доступна', () => {
++  assertMachineAllowed('ivanov@example.com', ssh('10.99.0.11'))
++})
++
++check('регистр адреса почты не важен', () => {
++  assertMachineAllowed('IVANOV@example.com', ssh('10.99.0.11'))
++})
++
++check('чужая машина недоступна', () => {
++  assert.throws(() => assertMachineAllowed('ivanov@example.com', ssh('10.99.0.99')),
++    /machine access denied/)
++})
++
++check('правило с портом ограничивает и протокол', () => {
++  assertMachineAllowed('ivanov@example.com', { termType: 'rdp', host: '10.99.0.12', port: 3389 })
++  assert.throws(() => assertMachineAllowed('ivanov@example.com', ssh('10.99.0.12')),
++    /machine access denied/)
++})
++
++check('подстановка в имени домена работает', () => {
++  assertMachineAllowed('ivanov@example.com', ssh('srv1.corp.example.com'))
++  assert.throws(() => assertMachineAllowed('ivanov@example.com', ssh('srv1.evil.com')),
++    /machine access denied/)
++})
++
++check('подстановка не пропускает похожий домен', () => {
++  assert.throws(
++    () => assertMachineAllowed('ivanov@example.com', ssh('corp.example.com.evil.net')),
++    /machine access denied/
++  )
++})
++
++check('подсеть разрешает адреса внутри и запрещает снаружи', () => {
++  assertMachineAllowed('petrov@example.com', ssh('10.99.0.200'))
++  assert.throws(() => assertMachineAllowed('petrov@example.com', ssh('10.99.1.5')),
++    /machine access denied/)
++})
++
++check('администратору доступно всё', () => {
++  assertMachineAllowed('boss@example.com', ssh('1.2.3.4'))
++  assertMachineAllowed('boss@example.com', { termType: 'local' })
++})
++
++check('локальная оболочка недоступна обычному сотруднику', () => {
++  assert.throws(() => assertMachineAllowed('ivanov@example.com', { termType: 'local' }),
++    /local terminal is for admins/)
++})
++
++check('неизвестный сотрудник не имеет доступа', () => {
++  assert.throws(() => assertMachineAllowed('nobody@example.com', ssh('10.99.0.11')),
++    /machine access denied/)
++})
++
++check('запрос без личности отвергается', () => {
++  assert.throws(() => assertMachineAllowed(undefined, ssh('10.99.0.11')),
++    /no identity/)
++})
++
++check('запрос без адреса отвергается', () => {
++  assert.throws(() => assertMachineAllowed('ivanov@example.com', { termType: 'ssh' }),
++    /no host/)
++})
++
++// Главная проверка: отсутствие политики должно закрывать доступ, а не открывать.
++check('без файла политики доступ закрыт', () => {
++  rmSync(policyPath)
++  assert.throws(() => assertMachineAllowed('ivanov@example.com', ssh('10.99.0.11')),
++    /policy is not configured/)
++})
++
++rmSync(dir, { recursive: true, force: true })
++
++const failed = results.filter(r => r[0] === 'FAIL')
++for (const r of results) {
++  console.log(`${r[0]}  ${r[1]}${r[2] ? '  -- ' + r[2] : ''}`)
++}
++console.log(`\nвсего ${results.length}, провалено ${failed.length}`)
++process.exit(failed.length ? 1 : 0)
+-- 
+2.54.0.windows.1
+

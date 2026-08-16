@@ -1,0 +1,578 @@
+From c7933fbde4a2b467f3d3e148c34b7edb1b6c50db Mon Sep 17 00:00:00 2001
+From: Hydra Soft <260101677+ZeroDayVPN@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 19:34:13 -0700
+Subject: [PATCH 2/2] =?UTF-8?q?=D0=9B=D0=B8=D1=87=D0=BD=D0=BE=D1=81=D1=82?=
+ =?UTF-8?q?=D1=8C=20=D0=B8=D0=B7=20Cloudflare=20Access=20=D0=B8=20=D0=B2?=
+ =?UTF-8?q?=D0=BB=D0=B0=D0=B4=D0=B5=D0=BD=D0=B8=D0=B5=20=D1=81=D0=B5=D1=81?=
+ =?UTF-8?q?=D1=81=D0=B8=D1=8F=D0=BC=D0=B8?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Стоковая версия однопользовательская по устройству: один пароль в SERVER_PASS
+на всех, а проверка WebSocket сводится к сравнению с единственным SERVER_USER.
+Подключиться к чужой сессии можно было, зная её идентификатор.
+
+Добавлено:
+- проверка JWT Cloudflare Access в самом приложении, с фиксацией алгоритма,
+  аудитории и издателя; middleware стоит до маршрутов, поэтому закрывает и
+  рукопожатие WebSocket;
+- токен приложения выдаётся на почту сотрудника, а не на общего пользователя;
+- реестр владельцев сессий: подключение к сессии разрешено только создавшему;
+- сравнение пароля в локальном режиме за постоянное время.
+
+13 тестов на модуль личности, включая отказ при подмене алгоритма на HS256.
+---
+ src/app/lib/cf-access.js          | 134 ++++++++++++++++++++++++++++++
+ src/app/lib/login.js              |  36 ++++++--
+ src/app/lib/session-owner.js      |  51 ++++++++++++
+ src/app/routes/ws.js              |  10 ++-
+ src/app/server/dispatch-center.js |  15 +++-
+ src/app/server/server.js          |  11 +++
+ src/app/server/terminal-api.js    |   4 +
+ test/cf-access.test.mjs           | 128 ++++++++++++++++++++++++++++
+ 8 files changed, 378 insertions(+), 11 deletions(-)
+ create mode 100644 src/app/lib/cf-access.js
+ create mode 100644 src/app/lib/session-owner.js
+ create mode 100644 test/cf-access.test.mjs
+
+diff --git a/src/app/lib/cf-access.js b/src/app/lib/cf-access.js
+new file mode 100644
+index 0000000..863027f
+--- /dev/null
++++ b/src/app/lib/cf-access.js
+@@ -0,0 +1,134 @@
++/**
++ * Личность сотрудника из Cloudflare Access.
++ *
++ * Access ставит подписанный JWT в заголовок Cf-Access-Jwt-Assertion (и в куку
++ * CF_Authorization) для каждого проксируемого запроса. Мы проверяем подпись
++ * сами, а не доверяем факту «запрос пришёл из туннеля»: иначе любой, кто
++ * доберётся до порта приложения напрямую -- изнутри узла, из соседнего
++ * контейнера или через ошибку в конфиге туннеля -- войдёт без аутентификации.
++ *
++ * Своей парольной базы мы не заводим: SSO и второй фактор уже есть у Access,
++ * а у себя храним только роли и права.
++ */
++
++import jwt from 'jsonwebtoken'
++import { createPublicKey } from 'crypto'
++import log from '../common/log.js'
++
++const teamDomain = (process.env.CF_ACCESS_TEAM_DOMAIN || '').replace(/^https?:\/\//, '').replace(/\/$/, '')
++const audience = process.env.CF_ACCESS_AUD || ''
++
++export const cfAccessEnabled = Boolean(teamDomain && audience)
++
++// Переопределение адреса набора ключей нужно для тестов: в них поднимается
++// локальный сервер ключей. В рабочем окружении переменная не задаётся.
++const certsUrl = process.env.CF_ACCESS_CERTS_URL ||
++  `https://${teamDomain}/cdn-cgi/access/certs`
++
++const KEYS_TTL_MS = 60 * 60 * 1000
++const FETCH_TIMEOUT_MS = 5000
++
++let keyCache = { keys: null, fetchedAt: 0 }
++
++async function fetchKeys () {
++  const controller = new AbortController()
++  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
++  try {
++    const res = await fetch(certsUrl, { signal: controller.signal })
++    if (!res.ok) {
++      throw new Error(`certs endpoint returned ${res.status}`)
++    }
++    const body = await res.json()
++    if (!Array.isArray(body.keys) || !body.keys.length) {
++      throw new Error('certs endpoint returned no keys')
++    }
++    return body.keys
++  } finally {
++    clearTimeout(timer)
++  }
++}
++
++/**
++ * Ключи кешируются на час. Если нужного kid в кеше нет, кеш обновляется
++ * немедленно: Cloudflare периодически меняет ключи, и жёсткий TTL приводил бы
++ * к отказам входа на время до истечения кеша.
++ */
++async function getKey (kid) {
++  const fresh = Date.now() - keyCache.fetchedAt < KEYS_TTL_MS
++  if (!fresh || !keyCache.keys) {
++    keyCache = { keys: await fetchKeys(), fetchedAt: Date.now() }
++  }
++  let jwk = keyCache.keys.find(k => k.kid === kid)
++  if (!jwk && fresh) {
++    keyCache = { keys: await fetchKeys(), fetchedAt: Date.now() }
++    jwk = keyCache.keys.find(k => k.kid === kid)
++  }
++  if (!jwk) {
++    throw new Error(`no key for kid ${kid}`)
++  }
++  return createPublicKey({ key: jwk, format: 'jwk' })
++}
++
++/**
++ * Достаёт токен Access из запроса. Заголовок приоритетнее куки: куку браузер
++ * пришлёт и на запросы, которые Access не проверял.
++ */
++export function extractAccessToken (req) {
++  const header = req.headers['cf-access-jwt-assertion']
++  if (header) {
++    return header
++  }
++  const cookie = req.headers.cookie
++  if (!cookie) {
++    return ''
++  }
++  const match = /(?:^|;\s*)CF_Authorization=([^;]+)/.exec(cookie)
++  return match ? decodeURIComponent(match[1]) : ''
++}
++
++/**
++ * Проверяет токен и возвращает личность. Бросает исключение при любой
++ * неудаче: неверная подпись, чужая аудитория, истёкший срок.
++ */
++export async function verifyAccessToken (token) {
++  if (!token) {
++    throw new Error('no access token')
++  }
++  const decoded = jwt.decode(token, { complete: true })
++  if (!decoded?.header?.kid) {
++    throw new Error('malformed access token')
++  }
++  const key = await getKey(decoded.header.kid)
++  // Алгоритм задан явно: без этого подделанный заголовок alg может подсунуть
++  // другую схему проверки. Аудитория обязательна -- иначе токен, выданный для
++  // другого приложения того же аккаунта, подойдёт и к нашему.
++  const payload = jwt.verify(token, key, {
++    algorithms: ['RS256'],
++    audience,
++    issuer: `https://${teamDomain}`
++  })
++  const email = payload.email || payload.common_name
++  if (!email) {
++    throw new Error('access token has no identity')
++  }
++  return {
++    email: String(email).toLowerCase(),
++    sub: payload.sub,
++    expiresAt: payload.exp
++  }
++}
++
++/**
++ * Middleware. Ставится до маршрутов, поэтому закрывает и обычные запросы, и
++ * рукопожатие WebSocket: терминальный канал без этого остался бы открытым.
++ */
++export async function accessGuard (req, res, next) {
++  try {
++    const identity = await verifyAccessToken(extractAccessToken(req))
++    req.accessUser = identity.email
++    next()
++  } catch (err) {
++    log.error('access denied:', err.message)
++    res.status(401).send('access denied')
++  }
++}
+diff --git a/src/app/lib/login.js b/src/app/lib/login.js
+index 6b595ca..087e470 100644
+--- a/src/app/lib/login.js
++++ b/src/app/lib/login.js
+@@ -1,18 +1,44 @@
+ /**
+- * simple login with password only
++ * Вход. Два режима.
++ *
++ * Командный: личность приходит из Cloudflare Access, пароль не спрашивается
++ * вовсе, а токен приложения выдаётся на конкретную почту сотрудника. Именно
++ * привязка токена к личности делает возможными права на машины и журнал
++ * действий.
++ *
++ * Локальный: общий пароль из SERVER_PASS, как в стоковой версии. Оставлен
++ * только для разработки и как страховка, если туннель обошли.
+  */
+ 
+ import { createToken } from './jwt.js'
++import { cfAccessEnabled } from './cf-access.js'
++import { timingSafeEqual } from 'crypto'
+ 
+ const {
+   SERVER_PASS
+ } = process.env
+ 
++// Сравнение за постоянное время: обычное сравнение строк завершается на первом
++// несовпавшем символе, и по времени ответа пароль подбирается посимвольно.
++function passwordMatches (given) {
++  const a = Buffer.from(String(given ?? ''))
++  const b = Buffer.from(String(SERVER_PASS ?? ''))
++  if (!b.length || a.length !== b.length) {
++    return false
++  }
++  return timingSafeEqual(a, b)
++}
++
+ export function login (req, res) {
+-  const { password } = req.body
+-  if (password !== SERVER_PASS) {
++  if (cfAccessEnabled) {
++    // accessGuard уже проверил подпись токена Access и положил сюда почту.
++    if (!req.accessUser) {
++      return res.status(401).send('no identity')
++    }
++    return res.send(createToken(req.accessUser))
++  }
++  if (!passwordMatches(req.body?.password)) {
+     return res.status(401).send('pass not right')
+   }
+-  const token = createToken()
+-  res.send(token)
++  res.send(createToken())
+ }
+diff --git a/src/app/lib/session-owner.js b/src/app/lib/session-owner.js
+new file mode 100644
+index 0000000..7878322
+--- /dev/null
++++ b/src/app/lib/session-owner.js
+@@ -0,0 +1,51 @@
++/**
++ * Владельцы сессий.
++ *
++ * В стоковой версии все сессии живут в одном общем реестре, а проверка при
++ * подключении к WebSocket сводится к «токен подписан нашим секретом». Для
++ * одного пользователя этого достаточно, для команды -- нет: зная идентификатор
++ * сессии, любой обладатель действительного токена подключился бы к чужому
++ * терминалу.
++ *
++ * Здесь фиксируется, кто создал сессию, и подключение к ней разрешается только
++ * ему. Это не полная изоляция: сессии по-прежнему живут в одном процессе Node,
++ * и ошибка в самом приложении по-прежнему даёт доступ к памяти со всеми
++ * учётными данными. Настоящая изоляция требует отдельного процесса на
++ * пользователя, см. docs/design/multiuser.md.
++ */
++
++import log from '../common/log.js'
++
++const owners = new Map()
++
++export function claimSession (sessionId, user) {
++  if (!sessionId || !user) {
++    return
++  }
++  owners.set(sessionId, user)
++}
++
++export function releaseSession (sessionId) {
++  owners.delete(sessionId)
++}
++
++/**
++ * Сессия без известного владельца считается недоступной, а не общей: тихо
++ * разрешить доступ к ней означало бы оставить обход проверки в любом сценарии,
++ * который забыли пометить владельцем.
++ */
++export function assertSessionOwner (sessionId, user) {
++  const owner = owners.get(sessionId)
++  if (owner === undefined) {
++    log.error(`session ${sessionId} has no owner, access denied`)
++    throw new Error('unknown session')
++  }
++  if (owner !== user) {
++    log.error(`user ${user} tried to attach to session of ${owner}`)
++    throw new Error('session belongs to another user')
++  }
++}
++
++export function ownerOf (sessionId) {
++  return owners.get(sessionId)
++}
+diff --git a/src/app/routes/ws.js b/src/app/routes/ws.js
+index fcb55ec..c0fd127 100644
+--- a/src/app/routes/ws.js
++++ b/src/app/routes/ws.js
+@@ -4,6 +4,7 @@ import {
+   isWin
+ } from '../common/runtime-constants.js'
+ import { verifyWs, initWs } from '../server/dispatch-center.js'
++import { assertSessionOwner, releaseSession } from '../lib/session-owner.js'
+ import {
+   terminals,
+   cleanAllSessions
+@@ -61,7 +62,7 @@ export function wsRoutes (app) {
+   })
+   app.ws('/spice/:pid', function (ws, req) {
+     const { query } = req
+-    verifyWs(req)
++    assertSessionOwner(req.params.pid, verifyWs(req))
+     const { pid } = req.params
+     const term = terminals(pid)
+     log.debug('ws: connected to spice session ->', pid)
+@@ -71,7 +72,7 @@ export function wsRoutes (app) {
+     })
+   })
+   app.ws('/terminals/:pid', function (ws, req) {
+-    verifyWs(req)
++    assertSessionOwner(req.params.pid, verifyWs(req))
+     const term = terminals(req.params.pid)
+     const { pid } = term
+     log.debug('ws: connected to terminal ->', pid)
+@@ -278,6 +279,7 @@ export function wsRoutes (app) {
+       // Clean up xmodem session
+       xmodemManager.destroySession(pid)
+       term.kill()
++      releaseSession(pid)
+       log.debug('Closed terminal ' + pid)
+       // Clean things up
+       ws.close && ws.close()
+@@ -334,7 +336,7 @@ export function wsRoutes (app) {
+   })
+   app.ws('/rdp/:pid', function (ws, req) {
+     const { width, height } = req.query
+-    verifyWs(req)
++    assertSessionOwner(req.params.pid, verifyWs(req))
+     const term = terminals(req.params.pid)
+     term.ws = ws
+     term.start(width, height)
+@@ -344,7 +346,7 @@ export function wsRoutes (app) {
+   })
+   app.ws('/vnc/:pid', function (ws, req) {
+     const { query } = req
+-    verifyWs(req)
++    assertSessionOwner(req.params.pid, verifyWs(req))
+     const { pid } = req.params
+     const term = terminals(pid)
+     term.ws = ws
+diff --git a/src/app/server/dispatch-center.js b/src/app/server/dispatch-center.js
+index 5916c25..75ce1c2 100644
+--- a/src/app/server/dispatch-center.js
++++ b/src/app/server/dispatch-center.js
+@@ -19,6 +19,7 @@ import log from '../common/log.js'
+ import fetch from './fetch.js'
+ import sync from './sync.js'
+ import { verify } from '../lib/jwt.js'
++import { cfAccessEnabled } from '../lib/cf-access.js'
+ import { runSync } from '../lib/run-sync.js'
+ import {
+   createTerm,
+@@ -64,12 +65,20 @@ const wsDec = (ws) => {
+   ws._socket.setKeepAlive(true, 30 * 1000)
+ }
+ 
++/**
++ * Проверяет токен и возвращает личность владельца соединения.
++ *
++ * В командном режиме идентификатор в токене -- почта сотрудника, поэтому
++ * сравнивать его с единственным SERVER_USER нельзя: это сравнение и есть то,
++ * что делает стоковую версию однопользовательской.
++ */
+ export function verifyWs (req) {
+   const { token } = req.query
+   const data = verify(token)
+-  if (SERVER_USER !== data.id) {
++  if (!cfAccessEnabled && SERVER_USER !== data.id) {
+     throw new Error('not valid request')
+   }
++  return data.id
+ }
+ 
+ export function initWs (app) {
+@@ -182,7 +191,9 @@ export function initWs (app) {
+ 
+   // common functions
+   app.ws('/common/s', (ws, req) => {
+-    verifyWs(req)
++    // Личность запоминается на соединении: сессии, созданные через этот канал,
++    // помечаются её владельцем.
++    ws.user = verifyWs(req)
+     wsDec(ws)
+     globalState.setCommonWs(ws)
+     ws.on('message', async (message) => {
+diff --git a/src/app/server/server.js b/src/app/server/server.js
+index 26c8d4d..bdd58ba 100644
+--- a/src/app/server/server.js
++++ b/src/app/server/server.js
+@@ -10,6 +10,7 @@ import {
+ import { resolve } from 'path'
+ import log from '../common/log.js'
+ import { applySystemCAsToGlobalAgent } from '../lib/system-ca.js'
++import { accessGuard, cfAccessEnabled } from '../lib/cf-access.js'
+ 
+ export async function createApp () {
+   const loadedCount = applySystemCAsToGlobalAgent()
+@@ -24,6 +25,16 @@ export async function createApp () {
+   // parse application/json
+   app.use(express.json())
+ 
++  // Проверка личности ставится до маршрутов, поэтому закрывает всё сразу,
++  // включая рукопожатие WebSocket и статику. Режим включается наличием
++  // настроек Cloudflare Access; если их нет, поведение как в стоковой версии.
++  if (cfAccessEnabled) {
++    log.info('[auth] Cloudflare Access enabled, identity from Cf-Access-Jwt-Assertion')
++    app.use(accessGuard)
++  } else {
++    log.info('[auth] Cloudflare Access disabled, shared password mode')
++  }
++
+   app.use(morgan(
+     ':method :url :status :res[content-length] - :response-time ms'
+   ))
+diff --git a/src/app/server/terminal-api.js b/src/app/server/terminal-api.js
+index 56a5982..c76b3fc 100644
+--- a/src/app/server/terminal-api.js
++++ b/src/app/server/terminal-api.js
+@@ -5,6 +5,7 @@
+ import { terminals } from './remote-common.js'
+ import { terminal, testConnection } from './session.js'
+ import { isDev } from '../common/runtime-constants.js'
++import { claimSession } from '../lib/session-owner.js'
+ 
+ export async function runCmd (ws, msg) {
+   const { id, pid, cmd } = msg
+@@ -117,6 +118,9 @@ export function createTerm (ws, msg) {
+   const { id, body } = msg
+   terminal(body, ws)
+     .then(r => {
++      // Владелец фиксируется в момент создания: подключиться к сессии по её
++      // идентификатору сможет только он.
++      claimSession(r.pid, ws.user)
+       const data = isDev
+         ? {
+             pid: r.pid,
+diff --git a/test/cf-access.test.mjs b/test/cf-access.test.mjs
+new file mode 100644
+index 0000000..699ffcd
+--- /dev/null
++++ b/test/cf-access.test.mjs
+@@ -0,0 +1,128 @@
++/**
++ * Проверка модуля личности Cloudflare Access.
++ *
++ * Тест не обращается к Cloudflare: поднимается локальный сервер набора ключей,
++ * и токены подписываются настоящей парой RSA. Это позволяет проверить именно
++ * то, что важно -- что подделанный, чужой или просроченный токен отвергается.
++ *
++ * Запуск: node test/cf-access.test.mjs
++ */
++
++import { createServer } from 'http'
++import { generateKeyPairSync } from 'crypto'
++import jwt from 'jsonwebtoken'
++import assert from 'assert'
++
++const TEAM = 'test-team.cloudflareaccess.com'
++const AUD = 'a'.repeat(64)
++const KID = 'test-kid-1'
++
++const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
++const jwk = { ...publicKey.export({ format: 'jwk' }), kid: KID, alg: 'RS256', use: 'sig' }
++
++// Второй ключ: им подписываем токен, чтобы проверить отказ при неверной подписи.
++const other = generateKeyPairSync('rsa', { modulusLength: 2048 })
++
++let certsRequests = 0
++const server = createServer((req, res) => {
++  certsRequests++
++  res.writeHead(200, { 'content-type': 'application/json' })
++  res.end(JSON.stringify({ keys: [jwk] }))
++})
++
++await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
++const { port } = server.address()
++
++process.env.CF_ACCESS_TEAM_DOMAIN = TEAM
++process.env.CF_ACCESS_AUD = AUD
++process.env.CF_ACCESS_CERTS_URL = `http://127.0.0.1:${port}/cdn-cgi/access/certs`
++
++const { verifyAccessToken, extractAccessToken, cfAccessEnabled } =
++  await import('../src/app/lib/cf-access.js')
++
++function sign (payload, key = privateKey, opts = {}) {
++  return jwt.sign(payload, key, { algorithm: 'RS256', keyid: KID, ...opts })
++}
++
++const base = {
++  email: 'Ivanov@example.com',
++  sub: 'user-1',
++  aud: AUD,
++  iss: `https://${TEAM}`
++}
++
++const results = []
++async function check (name, fn) {
++  try {
++    await fn()
++    results.push(['PASS', name])
++  } catch (err) {
++    results.push(['FAIL', name, err.message])
++  }
++}
++
++async function mustReject (name, token) {
++  await check(name, async () => {
++    await assert.rejects(() => verifyAccessToken(token))
++  })
++}
++
++await check('режим включается при заданных настройках', () => {
++  assert.strictEqual(cfAccessEnabled, true)
++})
++
++await check('действительный токен принимается, почта в нижнем регистре', async () => {
++  const identity = await verifyAccessToken(sign(base, privateKey, { expiresIn: '1h' }))
++  assert.strictEqual(identity.email, 'ivanov@example.com')
++  assert.strictEqual(identity.sub, 'user-1')
++})
++
++await mustReject('подпись чужим ключом отвергается',
++  sign(base, other.privateKey, { expiresIn: '1h' }))
++
++await mustReject('токен для другого приложения отвергается',
++  sign({ ...base, aud: 'b'.repeat(64) }, privateKey, { expiresIn: '1h' }))
++
++await mustReject('чужой издатель отвергается',
++  sign({ ...base, iss: 'https://evil.example.com' }, privateKey, { expiresIn: '1h' }))
++
++await mustReject('просроченный токен отвергается',
++  sign(base, privateKey, { expiresIn: '-1h' }))
++
++await mustReject('токен без личности отвергается',
++  sign({ sub: 'x', aud: AUD, iss: `https://${TEAM}` }, privateKey, { expiresIn: '1h' }))
++
++// Подмена алгоритма: токен, подписанный HMAC-ом с публичным ключом в качестве
++// секрета. Классический обход, если сервер не фиксирует список алгоритмов.
++await mustReject('подмена алгоритма на HS256 отвергается',
++  jwt.sign(base, publicKey.export({ type: 'spki', format: 'pem' }),
++    { algorithm: 'HS256', keyid: KID, expiresIn: '1h' }))
++
++await mustReject('пустой токен отвергается', '')
++await mustReject('мусор вместо токена отвергается', 'not-a-jwt')
++
++await check('токен берётся из заголовка', () => {
++  const req = { headers: { 'cf-access-jwt-assertion': 'from-header', cookie: 'CF_Authorization=from-cookie' } }
++  assert.strictEqual(extractAccessToken(req), 'from-header')
++})
++
++await check('токен берётся из куки, если заголовка нет', () => {
++  const req = { headers: { cookie: 'other=1; CF_Authorization=from-cookie; x=2' } }
++  assert.strictEqual(extractAccessToken(req), 'from-cookie')
++})
++
++await check('ключи кешируются, а не запрашиваются на каждый токен', async () => {
++  const before = certsRequests
++  await verifyAccessToken(sign(base, privateKey, { expiresIn: '1h' }))
++  await verifyAccessToken(sign(base, privateKey, { expiresIn: '1h' }))
++  assert.strictEqual(certsRequests, before)
++})
++
++server.close()
++
++const failed = results.filter(r => r[0] === 'FAIL')
++for (const r of results) {
++  console.log(`${r[0]}  ${r[1]}${r[2] ? '  -- ' + r[2] : ''}`)
++}
++console.log(`\nвсего ${results.length}, провалено ${failed.length}`)
++process.exit(failed.length ? 1 : 0)
+-- 
+2.54.0.windows.1
+

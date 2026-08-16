@@ -1,65 +1,287 @@
 {
   "version": 1,
   "generated": "2026-08-15",
-  "note": "Заполняется Агентом 2 по брифу docs/agents/briefs/agent2-supply-chain.md. Сейчас содержит только то, что установлено оркестратором достоверно.",
+  "note": "Обновлено по аудиту цепочки поставок (Агент 2).",
   "items": [
     {
       "id": "electerm-web",
       "kind": "git",
       "official_source": "https://github.com/electerm/electerm-web",
-      "pin": "commit:pending",
+      "pin": "commit:ab011d652e3750cb21b8f49bc0f3504f283036cd",
       "license": "MIT",
       "network_at_runtime": [
-        "ai.electerm.org (ИИ-ассистент по умолчанию)",
-        "github.com/gitee.com (синхронизация закладок в gist)"
+        "https://ai.electerm.org/api/ai",
+        "https://api.atlascloud.ai/v1",
+        "https://registry.npmjs.org",
+        "https://api.github.com",
+        "https://gitee.com/api/v5"
       ],
       "install_scripts": true,
       "verdict": "pin",
-      "notes": "Требует Node 24+, нативные модули. Внешние вызовы подлежат отключению на этапе clean-build."
+      "notes": "Есть install-скрипт в корневом package.json; динамическая догрузка модулей через npm.js/custom-require.js."
     },
     {
-      "id": "electerm-one-line-web-installer",
-      "kind": "script",
-      "official_source": "https://electerm.org/scripts/one-line-web.sh",
-      "pin": "none",
-      "license": "unknown",
+      "id": "electerm-desktop",
+      "kind": "git",
+      "official_source": "https://github.com/electerm/electerm",
+      "pin": "commit:0cd7196514b24fe0f696cd1ea8210857b2218070",
+      "license": "MIT",
+      "network_at_runtime": [
+        "https://sync.electerm.org/api/sync",
+        "https://electerm-mirror.html5beta.com",
+        "https://master.dl.sourceforge.net/project/electerm.mirror",
+        "https://electerm-store.html5beta.com"
+      ],
+      "install_scripts": true,
+      "verdict": "pin",
+      "notes": "Используется как источник общего клиентского кода и пресетов (AI/sync/update)."
+    },
+    {
+      "id": "electerm-web-docker",
+      "kind": "git",
+      "official_source": "https://github.com/electerm/electerm-web-docker",
+      "pin": "commit:8c8599159ff6cf11d63276a69a14c73ccd86bf9a",
+      "license": "MIT",
       "network_at_runtime": [],
       "install_scripts": true,
-      "verdict": "remove",
-      "notes": "Рекомендуемый в README способ установки: скрипт с сайта проекта, вне GitHub, без контрольной суммы. Не используем: собираем из исходников."
+      "verdict": "replace",
+      "notes": "Dockerfile использует FROM node:24, git clone --depth 1 и npm i без digest/commit pin."
     },
     {
       "id": "ironrdp-wasm",
       "kind": "git",
       "official_source": "https://github.com/electerm/ironrdp-wasm",
-      "pin": "commit:pending",
+      "pin": "commit:103e36ba0bcfeb1950b2ff2d94cc4897588fcfc9",
       "license": "MIT",
       "network_at_runtime": [],
-      "install_scripts": true,
+      "install_scripts": false,
       "verdict": "pin",
-      "notes": "WASM-сборка Devolutions IronRDP. Требует Rust toolchain и wasm-pack; собираем сами, prebuilt не берём."
+      "notes": "Исходный репозиторий без pkg; сборка wasm должна выполняться в доверенном CI."
+    },
+    {
+      "id": "rdpjs",
+      "kind": "git",
+      "official_source": "https://github.com/electerm/rdpjs",
+      "pin": "commit:b41e45ee6fef23672d1d5972d14b0d099bf89933",
+      "license": "GPL-3.0",
+      "network_at_runtime": [],
+      "install_scripts": false,
+      "verdict": "remove",
+      "notes": "GPL-3.0 и крупный сгенерированный артефакт rdp/core/rle.js (Emscripten)."
+    },
+    {
+      "id": "electerm-sync-server-cloudflare",
+      "kind": "git",
+      "official_source": "https://github.com/electerm/electerm-sync-server-cloudflare",
+      "pin": "commit:f37fe9fed9cead82e63a07e4b1cb18b4d875fdc4",
+      "license": "MIT",
+      "network_at_runtime": [],
+      "install_scripts": false,
+      "verdict": "pin",
+      "notes": "Самохостимый sync backend (Workers + D1), без postinstall/preinstall."
+    },
+    {
+      "id": "electerm-sync-server-edgeone",
+      "kind": "git",
+      "official_source": "https://github.com/icelee123/electerm-sync-server-edgeone",
+      "pin": "commit:c6655bd78540e65ed8b45ce6e6ce49b397868f32",
+      "license": "MIT",
+      "network_at_runtime": [],
+      "install_scripts": false,
+      "verdict": "pin",
+      "notes": "Самохостимый sync backend (EdgeOne KV), сборка через локальный build.js."
+    },
+    {
+      "id": "lite-http-tunnel",
+      "kind": "git",
+      "official_source": "https://github.com/electerm/lite-http-tunnel",
+      "pin": "commit:12e400aa1c1be81b66d27b4844118ed57cc7dbb0",
+      "license": "GPL-3.0",
+      "network_at_runtime": [],
+      "install_scripts": false,
+      "verdict": "remove",
+      "notes": "GPL-3.0. В контур сейчас не входит. Решение оркестратора: при необходимости запускается отдельным сервисом для конкретной машины и на время, потому что внутреннее использование без распространения обязательств GPL на наш код не накладывает; копировать или встраивать код нельзя."
     },
     {
       "id": "websockify",
       "kind": "git",
       "official_source": "https://github.com/novnc/websockify",
-      "pin": "none",
+      "pin": "commit:3dd228b81ade1ff76a27ad12eed6e78df8c6f8a6",
       "license": "LGPL-3.0",
       "network_at_runtime": [],
       "install_scripts": false,
       "verdict": "keep",
-      "notes": "Код не копируем из-за LGPL: берём только подход (мост WebSocket-TCP и маршрутизация по токену)."
+      "notes": "Оставить только как reference implementation, код не копировать."
     },
     {
       "id": "goproxy",
       "kind": "git",
       "official_source": "https://github.com/snail007/goproxy",
-      "pin": "none",
+      "pin": "commit:e6d6a821db80e7f47ee6e981a144984e1d4ddb3d",
       "license": "GPL-3.0",
       "network_at_runtime": [],
       "install_scripts": true,
       "verdict": "remove",
-      "notes": "В контур не вносим: дублирует WireGuard и Cloudflare Tunnel, штатная установка через curl|bash, GPL-3.0 несовместим с закрытым распространением."
+      "notes": "README продвигает автоматическую установку через curl|bash; GPL-3.0 для нашей модели неприемлем."
+    },
+    {
+      "id": "electerm-one-line-web-sh",
+      "kind": "script",
+      "official_source": "https://electerm.org/scripts/one-line-web.sh",
+      "pin": "sha256:3257acf987052e3b9cd87f8f1f9f5a7ac3724dd69ea8357f3916746364a3fd59",
+      "license": "unknown",
+      "network_at_runtime": [
+        "https://github.com/electerm/electerm-web.git",
+        "https://fnm.vercel.app/install"
+      ],
+      "install_scripts": true,
+      "verdict": "remove",
+      "notes": "Непрозрачный bootstrap с внешнего домена, без подписи; вызывает npm install и npm run build."
+    },
+    {
+      "id": "electerm-one-line-web-bat",
+      "kind": "script",
+      "official_source": "https://electerm.org/scripts/one-line-web.bat",
+      "pin": "sha256:2ae67621a1ff51f1b2422c869ea4bf23f28a72dc5bdc74e91c2f60c07a1060e5",
+      "license": "unknown",
+      "network_at_runtime": [
+        "https://github.com/electerm/electerm-web.git"
+      ],
+      "install_scripts": true,
+      "verdict": "remove",
+      "notes": "Тянет HEAD через git clone --depth 1 и запускает npm install/build."
+    },
+    {
+      "id": "npm-electerm-react-5.1.20",
+      "kind": "npm",
+      "official_source": "https://registry.npmjs.org/@electerm/electerm-react/-/electerm-react-5.1.20.tgz",
+      "pin": "version:5.1.20",
+      "license": "MIT",
+      "network_at_runtime": [
+        "https://sync.electerm.org/api/sync",
+        "https://api.atlascloud.ai/v1",
+        "https://api.openai.com/v1"
+      ],
+      "install_scripts": false,
+      "verdict": "pin",
+      "notes": "Содержит клиентские дефолтные endpoint-ы sync/update/AI, копируется в проект install-скриптом."
+    },
+    {
+      "id": "npm-node-pty-1.2.0-beta.15",
+      "kind": "npm",
+      "official_source": "https://registry.npmjs.org/node-pty/-/node-pty-1.2.0-beta.15.tgz",
+      "pin": "sha256:114ac80c3fe075eff76217a4122d135576582695f49c03a5da3835cdfc2f89c5",
+      "license": "MIT",
+      "network_at_runtime": [],
+      "install_scripts": true,
+      "verdict": "pin",
+      "notes": "install/postinstall есть; prebuilt-бинарники включены в tarball, fallback на node-gyp rebuild."
+    },
+    {
+      "id": "npm-serialport-bindings-cpp-13.0.0",
+      "kind": "npm",
+      "official_source": "https://registry.npmjs.org/@serialport/bindings-cpp/-/bindings-cpp-13.0.0.tgz",
+      "pin": "sha256:68bc2ce6a4b3be82d76d708d1467c6adf2be878fefe09c499017b6273c3f024d",
+      "license": "MIT",
+      "network_at_runtime": [],
+      "install_scripts": true,
+      "verdict": "pin",
+      "notes": "install: node-gyp-build; prebuilt *.node для множества платформ включены в tarball."
+    },
+    {
+      "id": "npm-ironrdp-wasm-1.1.0-binary",
+      "kind": "binary",
+      "official_source": "https://registry.npmjs.org/ironrdp-wasm/-/ironrdp-wasm-1.1.0.tgz",
+      "pin": "sha256:b648a6a9dab49fb1c8698f3a098a9bdf1edd0ca458789a21f6a1e5a6d5883ddd",
+      "license": "MIT",
+      "network_at_runtime": [],
+      "install_scripts": false,
+      "verdict": "pin",
+      "notes": "Содержит готовый pkg/rdp_client_bg.wasm."
+    },
+    {
+      "id": "npm-electerm-sync-2.0.1",
+      "kind": "npm",
+      "official_source": "https://registry.npmjs.org/electerm-sync/-/electerm-sync-2.0.1.tgz",
+      "pin": "version:2.0.1",
+      "license": "MIT",
+      "network_at_runtime": [
+        "https://api.github.com",
+        "https://gitee.com/api/v5"
+      ],
+      "install_scripts": false,
+      "verdict": "pin",
+      "notes": "Библиотека sync API для github/gitee/custom/cloud."
+    },
+    {
+      "id": "npm-gist-wrapper-1.0.0",
+      "kind": "npm",
+      "official_source": "https://registry.npmjs.org/gist-wrapper/-/gist-wrapper-1.0.0.tgz",
+      "pin": "version:1.0.0",
+      "license": "MIT",
+      "network_at_runtime": [
+        "https://api.github.com"
+      ],
+      "install_scripts": false,
+      "verdict": "pin",
+      "notes": "Прямой клиент GitHub Gist API."
+    },
+    {
+      "id": "npm-gitee-client-1.0.0",
+      "kind": "npm",
+      "official_source": "https://registry.npmjs.org/gitee-client/-/gitee-client-1.0.0.tgz",
+      "pin": "version:1.0.0",
+      "license": "MIT",
+      "network_at_runtime": [
+        "https://gitee.com/api"
+      ],
+      "install_scripts": false,
+      "verdict": "pin",
+      "notes": "Прямой клиент Gitee API."
+    },
+    {
+      "id": "npm-lockfile-npmmirror-host",
+      "kind": "endpoint",
+      "official_source": "https://registry.npmmirror.com",
+      "pin": "none",
+      "license": "n/a",
+      "network_at_runtime": [],
+      "install_scripts": false,
+      "verdict": "replace",
+      "notes": "В package-lock найдено 53 resolved URL на неофициальный mirror; заменить на registry.npmjs.org."
+    },
+    {
+      "id": "default-ai-endpoint-electerm",
+      "kind": "endpoint",
+      "official_source": "https://ai.electerm.org/api/ai",
+      "pin": "none",
+      "license": "n/a",
+      "network_at_runtime": [],
+      "install_scripts": false,
+      "verdict": "remove",
+      "notes": "Внешний AI endpoint по умолчанию; для закрытого контура отключить."
+    },
+    {
+      "id": "default-sync-cloud-endpoint-electerm",
+      "kind": "endpoint",
+      "official_source": "https://sync.electerm.org/api/sync",
+      "pin": "none",
+      "license": "n/a",
+      "network_at_runtime": [],
+      "install_scripts": false,
+      "verdict": "replace",
+      "notes": "Заменить на self-hosted Cloudflare/EdgeOne endpoint."
+    },
+    {
+      "id": "update-mirror-electerm-html5beta",
+      "kind": "endpoint",
+      "official_source": "https://electerm-mirror.html5beta.com",
+      "pin": "none",
+      "license": "n/a",
+      "network_at_runtime": [],
+      "install_scripts": false,
+      "verdict": "remove",
+      "notes": "Нестандартный mirror для обновлений desktop-ветки."
     }
   ]
 }

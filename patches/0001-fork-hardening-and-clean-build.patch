@@ -1,0 +1,237 @@
+From dbb4f2adc548bb898a6bc23278e38e64014256f7 Mon Sep 17 00:00:00 2001
+From: Hydra Soft <260101677+ZeroDayVPN@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 19:24:58 -0700
+Subject: [PATCH] =?UTF-8?q?=D0=A5=D0=B0=D1=80=D0=B4=D0=BD=D0=B5=D0=BD?=
+ =?UTF-8?q?=D0=B8=D0=BD=D0=B3=20=D1=84=D0=BE=D1=80=D0=BA=D0=B0=20=D0=B8=20?=
+ =?UTF-8?q?=D1=81=D0=B2=D0=BE=D1=8F=20=D1=81=D0=B1=D0=BE=D1=80=D0=BA=D0=B0?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Отключены внешние вызовы, которые в стоковой версии работают по умолчанию:
+провайдер ИИ (ai.electerm.org и api.atlascloud.ai) и докачивание npm-пакетов
+во время работы приложения. Срок жизни токена снижен с 120 лет до 12 часов.
+
+Сборка своя: база по digest, зависимости из lock-файла с запретом скриптов
+пакетов, нативные модули компилируются из исходников, процесс не под root.
+---
+ .dockerignore                     |  9 ++++
+ .npmrc                            | 19 +++++++++
+ Dockerfile                        | 68 +++++++++++++++++++++++++++++++
+ src/app/common/default-setting.js |  6 ++-
+ src/app/lib/custom-require.js     |  7 +++-
+ src/app/lib/jwt.js                |  5 ++-
+ src/app/lib/view.js               | 29 +++++++++----
+ 7 files changed, 131 insertions(+), 12 deletions(-)
+ create mode 100644 .dockerignore
+ create mode 100644 .npmrc
+ create mode 100644 Dockerfile
+
+diff --git a/.dockerignore b/.dockerignore
+new file mode 100644
+index 0000000..5542ee9
+--- /dev/null
++++ b/.dockerignore
+@@ -0,0 +1,9 @@
++.git
++node_modules
++dist
++data
++database
++*.log
++.env
++.sample.env
++work
+diff --git a/.npmrc b/.npmrc
+new file mode 100644
+index 0000000..ef432c0
+--- /dev/null
++++ b/.npmrc
+@@ -0,0 +1,19 @@
++# Скрипты пакетов не выполняются. Это основной путь атаки на цепочку поставок в
++# npm: preinstall/install/postinstall любого пакета в дереве зависимостей
++# запускается с правами того, кто ставит. Нужные исключения выполняются явно в
++# Dockerfile, а не разрешаются всем сразу.
++ignore-scripts=true
++
++# Точные версии при добавлении зависимостей: диапазон вида ^1.2.3 означает, что
++# в следующей сборке приедет другой код.
++save-exact=true
++
++# Upstream держит в devDependencies несовместимые по peer-диапазонам пакеты:
++# vite 8 требует @types/node 26, а закреплён 22. Конфликт касается только типов
++# времени сборки и на рантайм не влияет, но без этого флага npm отказывается
++# устанавливать дерево вообще. Флаг задан здесь, а не в командной строке, чтобы
++# локальная сборка и сборка в образе давали одинаковый результат.
++legacy-peer-deps=true
++
++fund=false
++audit=false
+diff --git a/Dockerfile b/Dockerfile
+new file mode 100644
+index 0000000..a8f0a90
+--- /dev/null
++++ b/Dockerfile
+@@ -0,0 +1,68 @@
++# Сборка форка electerm-web для платформы.
++#
++# Отличия от штатного образа проекта:
++#   - базовый образ закреплён digest-ом, а не тегом;
++#   - зависимости ставятся из package-lock.json с запретом скриптов пакетов;
++#   - нативные модули собираются из исходников, а не скачиваются готовыми;
++#   - процесс работает не под root.
++
++# node:24-bookworm-slim, digest получен 2026-08-15.
++# Обновление digest -- отдельное изменение с ревью, см. security/README.md.
++FROM node:24-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03 AS builder
++
++WORKDIR /build
++
++# Инструменты компиляции нужны, чтобы собрать нативные модули у себя, а не
++# доверять чужим бинарникам.
++RUN apt-get update \
++ && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
++ && rm -rf /var/lib/apt/lists/*
++
++COPY package.json package-lock.json .npmrc ./
++
++# npm ci ставит строго то, что в lock-файле, и падает при расхождении с
++# package.json -- в отличие от npm install, который может тихо обновить дерево.
++RUN npm ci --ignore-scripts
++
++COPY . .
++
++# Белый список того, что нам действительно нужно выполнить. Каждая строка --
++# осознанное исключение из ignore-scripts.
++#
++# 1. Шаг сборки самого репозитория: раскладывает клиентскую часть из пакета
++#    @electerm/electerm-react. Это наш код, не сторонний postinstall.
++RUN node build/bin/install
++# 2. Нативные модули. --build-from-source обязателен: иначе node-gyp-build
++#    подхватит готовый бинарник, происхождение которого мы не проверяли.
++RUN npm rebuild --build-from-source node-pty @serialport/bindings-cpp
++# 3. Сборка клиентского бандла.
++RUN npm run build
++
++# Инструменты разработки в рабочий образ не попадают.
++RUN npm prune --omit=dev --ignore-scripts
++
++# ---------------------------------------------------------------------------
++FROM node:24-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03
++
++ENV NODE_ENV=production \
++    HOST=0.0.0.0 \
++    PORT=5577 \
++    ENABLE_AUTH=1 \
++    DISABLE_LOCAL_TERMINAL=1 \
++    TOKEN_EXPIRED_TIME=12h \
++    DB_PATH=/app/data
++
++WORKDIR /app
++
++# Пользователь node есть в базовом образе. Терминальный сервер под root -- это
++# готовая эскалация: любая ошибка в обработке ввода даёт права на контейнер.
++COPY --from=builder --chown=node:node /build /app
++# Каталоги состояния создаются заранее и передаются пользователю node: под
++# непривилегированным пользователем приложение не сможет создать их само.
++# Сюда монтируется том, поэтому это единственное место, где приложение пишет.
++RUN mkdir -p /app/data/uploads && chown -R node:node /app/data
++
++USER node
++EXPOSE 5577
++
++CMD ["node", "./src/app/app.js"]
+diff --git a/src/app/common/default-setting.js b/src/app/common/default-setting.js
+index f784304..29ab7fd 100644
+--- a/src/app/common/default-setting.js
++++ b/src/app/common/default-setting.js
+@@ -59,8 +59,10 @@ export default {
+   hideIP: false,
+   dataSyncSelected: 'all',
+   nameAI: '',
+-  baseURLAI: 'https://api.atlascloud.ai/v1',
+-  modelAI: 'deepseek-chat',
++  // Адрес сторонней ИИ-платформы в настройках по умолчанию убран: см. причину
++  // в src/app/lib/view.js. Значение задаёт администратор.
++  baseURLAI: '',
++  modelAI: '',
+   roleAI: '终端专家,提供不同系统下命令,简要解释用法,用markdown格式',
+   apiPathAI: '/chat/completions',
+   authHeaderNameAI: 'Authorization: Bearer',
+diff --git a/src/app/lib/custom-require.js b/src/app/lib/custom-require.js
+index c9fd268..9bd6ae6 100644
+--- a/src/app/lib/custom-require.js
++++ b/src/app/lib/custom-require.js
+@@ -27,7 +27,12 @@ export const customRequire = async (moduleName, options = {}) => {
+     process.env.CUSTOM_MODULES_FOLDER_PATH ||
+     getDataFolderPath()
+   const isCustomModule = options.isCustomModule || false
+-  const downloadModule = options.downloadModule !== false
++  // Upstream включает докачивание модуля из npm по умолчанию: если import не
++  // удался, пакет скачивается из реестра и сразу исполняется через import().
++  // Это загрузка чужого кода в обход lock-файла, ревью и сборки, поэтому у нас
++  // это возможно только при явном разрешении администратора.
++  const downloadModule = process.env.ALLOW_RUNTIME_NPM_INSTALL === '1' &&
++    options.downloadModule === true
+ 
+   const modulePath = resolve(customModulesFolderPath, 'node_modules', moduleName)
+ 
+diff --git a/src/app/lib/jwt.js b/src/app/lib/jwt.js
+index 73b2014..db44c16 100644
+--- a/src/app/lib/jwt.js
++++ b/src/app/lib/jwt.js
+@@ -20,7 +20,10 @@ export const errHandler = function (err, req, res, next) {
+ export function createToken (
+   user = process.env.SERVER_USER,
+   pass = process.env.SERVER_SECRET,
+-  expire = process.env.TOKEN_EXPIRED_TIME || '120y'
++  // Upstream по умолчанию выдаёт токен на 120 лет. Для командной работы это
++  // неприемлемо: утёкший токен нельзя отозвать, а срок его действия
++  // переживёт и сотрудника, и саму систему.
++  expire = process.env.TOKEN_EXPIRED_TIME || '12h'
+ ) {
+   const x = jwtb.sign({
+     id: user
+diff --git a/src/app/lib/view.js b/src/app/lib/view.js
+index 6e7b2dc..358bfcb 100644
+--- a/src/app/lib/view.js
++++ b/src/app/lib/view.js
+@@ -20,14 +20,27 @@ import { logDir } from '../server/session-log.js'
+ import { resolve } from 'path'
+ import fs from 'fs'
+ 
+-const defaultAIPreset = {
+-  baseURLAI: 'https://ai.electerm.org/api/ai',
+-  apiPathAI: '/chat/completions',
+-  modelAI: 'mistral-small-latest',
+-  authHeaderNameAI: 'Authorization: Bearer',
+-  id: 'ai.electerm.org',
+-  nameAI: 'ai.electerm.org(default free)'
+-}
++// Провайдер ИИ по умолчанию отключён. В терминал попадают команды, пути,
++// содержимое конфигов и иногда секреты, и отправлять это на сторонний сервис
++// без осознанного решения нельзя. Адрес задаётся администратором через
++// переменные окружения; пока он пуст, запрос никуда не уходит.
++const defaultAIPreset = process.env.AI_BASE_URL
++  ? {
++      baseURLAI: process.env.AI_BASE_URL,
++      apiPathAI: process.env.AI_API_PATH || '/chat/completions',
++      modelAI: process.env.AI_MODEL || '',
++      authHeaderNameAI: process.env.AI_AUTH_HEADER || 'Authorization: Bearer',
++      id: 'configured',
++      nameAI: process.env.AI_NAME || 'настроенный провайдер'
++    }
++  : {
++      baseURLAI: '',
++      apiPathAI: '/chat/completions',
++      modelAI: '',
++      authHeaderNameAI: 'Authorization: Bearer',
++      id: 'disabled',
++      nameAI: 'не настроен'
++    }
+ 
+ let needMigrate
+ 
+-- 
+2.54.0.windows.1
+

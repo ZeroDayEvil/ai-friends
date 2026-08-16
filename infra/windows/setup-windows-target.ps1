@@ -81,6 +81,27 @@ if ($EnsureSsh) {
     New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell `
         -Value "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
         -PropertyType String -Force | Out-Null
+
+    # Штатное правило OpenSSH нередко создаётся привязанным к профилю Private,
+    # а сетевой интерфейс облачной машины относится к Public -- тогда правило
+    # не действует, и весь доступ висит на единственном другом правиле. Его
+    # случайное отключение равно потере машины, если консольный агент облака
+    # выключен. Поэтому правило распространяется на все профили: получается два
+    # независимых действующих правила вместо одного.
+    $builtin = Get-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -ErrorAction SilentlyContinue
+    if ($builtin) {
+        if ($builtin.Profile -ne 'Any') {
+            Set-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -Profile Any -Enabled True
+            Write-Host "Штатное правило OpenSSH было привязано к профилю $($builtin.Profile), расширено до Any." -ForegroundColor Green
+        } else {
+            Write-Host 'Штатное правило OpenSSH действует во всех профилях.'
+        }
+    } else {
+        New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH SSH Server (sshd)' `
+            -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22 -Profile Any | Out-Null
+        Write-Host 'Создано правило для порта 22.' -ForegroundColor Green
+    }
+
     Write-Host 'Ключи добавляются скриптом install-pubkey-on-server.ps1.'
 }
 

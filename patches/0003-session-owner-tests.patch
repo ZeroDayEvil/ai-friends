@@ -1,0 +1,101 @@
+From 3f36199ad591e15dc898527c8add2e55ac18a4cb Mon Sep 17 00:00:00 2001
+From: Hydra Soft <260101677+ZeroDayVPN@users.noreply.github.com>
+Date: Sat, 15 Aug 2026 19:38:28 -0700
+Subject: [PATCH 3/3] =?UTF-8?q?=D0=A2=D0=B5=D1=81=D1=82=D1=8B=20=D0=BD?=
+ =?UTF-8?q?=D0=B0=20=D1=80=D0=B5=D0=B5=D1=81=D1=82=D1=80=20=D0=B2=D0=BB?=
+ =?UTF-8?q?=D0=B0=D0=B4=D0=B5=D0=BB=D1=8C=D1=86=D0=B5=D0=B2=20=D1=81=D0=B5?=
+ =?UTF-8?q?=D1=81=D1=81=D0=B8=D0=B9?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ test/session-owner.test.mjs | 76 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 76 insertions(+)
+ create mode 100644 test/session-owner.test.mjs
+
+diff --git a/test/session-owner.test.mjs b/test/session-owner.test.mjs
+new file mode 100644
+index 0000000..d343b09
+--- /dev/null
++++ b/test/session-owner.test.mjs
+@@ -0,0 +1,76 @@
++/**
++ * Проверка реестра владельцев сессий.
++ *
++ * Запуск: node test/session-owner.test.mjs
++ */
++
++import assert from 'assert'
++import {
++  claimSession,
++  releaseSession,
++  assertSessionOwner,
++  ownerOf
++} from '../src/app/lib/session-owner.js'
++
++const results = []
++function check (name, fn) {
++  try {
++    fn()
++    results.push(['PASS', name])
++  } catch (err) {
++    results.push(['FAIL', name, err.message])
++  }
++}
++
++check('владелец запоминается при создании сессии', () => {
++  claimSession('pid-1', 'ivanov@example.com')
++  assert.strictEqual(ownerOf('pid-1'), 'ivanov@example.com')
++})
++
++check('владелец подключается к своей сессии', () => {
++  assertSessionOwner('pid-1', 'ivanov@example.com')
++})
++
++check('чужой пользователь к сессии не подключается', () => {
++  assert.throws(
++    () => assertSessionOwner('pid-1', 'petrov@example.com'),
++    /another user/
++  )
++})
++
++check('сессия с неизвестным владельцем недоступна', () => {
++  assert.throws(
++    () => assertSessionOwner('pid-unknown', 'ivanov@example.com'),
++    /unknown session/
++  )
++})
++
++check('после закрытия сессии доступ к идентификатору закрыт', () => {
++  claimSession('pid-2', 'ivanov@example.com')
++  releaseSession('pid-2')
++  assert.throws(
++    () => assertSessionOwner('pid-2', 'ivanov@example.com'),
++    /unknown session/
++  )
++})
++
++check('пустые значения не создают владельца', () => {
++  claimSession('', 'ivanov@example.com')
++  claimSession('pid-3', undefined)
++  assert.throws(() => assertSessionOwner('pid-3', 'ivanov@example.com'), /unknown session/)
++})
++
++// Однопользовательский режим: владельцем становится идентификатор из токена,
++// то есть SERVER_USER. Проверка при этом продолжает работать, поэтому старое
++// поведение не ломается.
++check('режим общего пользователя продолжает работать', () => {
++  claimSession('pid-4', 'default_user')
++  assertSessionOwner('pid-4', 'default_user')
++})
++
++const failed = results.filter(r => r[0] === 'FAIL')
++for (const r of results) {
++  console.log(`${r[0]}  ${r[1]}${r[2] ? '  -- ' + r[2] : ''}`)
++}
++console.log(`\nвсего ${results.length}, провалено ${failed.length}`)
++process.exit(failed.length ? 1 : 0)
+-- 
+2.54.0.windows.1
+

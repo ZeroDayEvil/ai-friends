@@ -77,7 +77,7 @@ show_file() {
     head -n "$limit" -- "$f"
     local total
     total=$(wc -l < "$f" 2>/dev/null || echo '?')
-    printf '--- (показано до %s строк из %s)\n' "$limit" "$total"
+    printf -- '--- (показано до %s строк из %s)\n' "$limit" "$total"
   elif [[ -e "$f" ]]; then
     printf '    существует, но недоступен для чтения текущему пользователю\n'
   else

@@ -1,0 +1,41 @@
+# Среда для агента GitHub Copilot.
+#
+# Имя задачи обязано быть ровно copilot-setup-steps: GitHub ищет её по имени и
+# выполняет до запуска агента. Смысл файла в том, чтобы агент получал ту же
+# оснастку, что и CI, и не начинал работу с установки инструментов по своему
+# усмотрению -- иначе он потянет что-нибудь мимо нашей политики зависимостей.
+#
+# Проверки PowerShell сюда не входят: они требуют windows-раннера, а среда
+# агента linux-овая. PSScriptAnalyzer остаётся в ci.yml, где для него есть
+# windows-2022, и падение всё равно будет видно в пул-реквесте.
+
+name: copilot-setup-steps
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+
+      # Быстрый предохранитель: если агент начинает работу в репозитории, где
+      # политика уже нарушена, он должен узнать об этом сразу, а не после того,
+      # как соберёт поверх этого свои изменения.
+      - name: Политика зависимостей
+        run: node scripts/check-pins.mjs

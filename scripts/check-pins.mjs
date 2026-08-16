@@ -72,7 +72,34 @@ const PIPE_TO_SHELL = [
   /\$\((curl|wget)[^)]*\)\s*"?\s*$/i
 ]
 
-// --- 3. Образы без digest -------------------------------------------------
+// --- 3. Источники пакетов в lock-файлах -----------------------------------
+// Проверяется отдельно от общего обхода: lock-файл форка лежит в apps/, которая
+// в этот репозиторий не коммитится, но проверить её локально нужно. Аудит нашёл
+// в lock-файле upstream 106 ссылок на неофициальное зеркало registry.npmmirror.com
+// рядом с официальным реестром -- ровно тот случай, который эта проверка ловит.
+const ALLOWED_REGISTRIES = new Set(['registry.npmjs.org'])
+const LOCK_FILES = ['apps/electerm-web/package-lock.json', 'package-lock.json']
+
+for (const lockPath of LOCK_FILES) {
+  const full = join(root, lockPath)
+  let text
+  try {
+    text = readFileSync(full, 'utf8')
+  } catch {
+    continue // файла нет -- это не нарушение
+  }
+  const hosts = new Map()
+  for (const m of text.matchAll(/"resolved":\s*"https?:\/\/([^/"]+)/g)) {
+    hosts.set(m[1], (hosts.get(m[1]) ?? 0) + 1)
+  }
+  for (const [host, count] of hosts) {
+    if (!ALLOWED_REGISTRIES.has(host)) {
+      problems.push(`${lockPath}: ${count} записей с неофициального источника ${host}`)
+    }
+  }
+}
+
+// --- 4. Образы без digest -------------------------------------------------
 const IMAGE_RE = /^\s*image:\s*(\S+)/
 
 for (const file of walk(root)) {

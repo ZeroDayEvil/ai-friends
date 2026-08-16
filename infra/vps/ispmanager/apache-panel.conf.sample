@@ -1,0 +1,66 @@
+# Проксирование веб-панели платформы на локальный порт средствами Apache.
+#
+# Нужен только если на сервере НЕТ nginx и Apache обслуживает запросы из
+# интернета напрямую. Если есть связка nginx + Apache, используйте
+# nginx-panel.conf.sample: перехватывать запрос на внешнем сервере проще и
+# безопаснее, Apache при этом не задействован вообще.
+#
+# Куда кладётся: в каталог ресурсов конкретного сайта, который ISPmanager
+# подключает в его VirtualHost. Для Debian-сборок это
+# /etc/apache2/vhosts-resources/@DOMAIN@/, для RHEL --
+# /etc/httpd/conf/vhosts-resources/@DOMAIN@/. Точный путь берётся из
+# ispmgr.conf (параметр path apache-vhosts-resources).
+#
+# Здесь нет директивы VirtualHost: файл включается внутрь неё.
+#
+# Требуются модули: proxy, proxy_http, proxy_wstunnel, rewrite, headers.
+# Проверка: apache2ctl -M | grep -E 'proxy|wstunnel|rewrite|headers'
+# Включение отсутствующего модуля перезапускает Apache и затрагивает все сайты
+# сервера, поэтому deploy-panel.sh этого не делает и останавливается.
+#
+# Подстановки выполняет deploy-panel.sh: @DOMAIN@, @PREFIX@, @PREFIX_BARE@,
+# @PORT@.
+
+# Панель работает с учётными данными, по http её отдавать нельзя.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} !=on
+    RewriteRule ^@PREFIX@ https://@DOMAIN@%{REQUEST_URI} [R=301,L]
+</IfModule>
+
+<IfModule mod_proxy.c>
+    # Обратный прокси только для нашего пути. ProxyRequests off критично: без
+    # него сервер превращается в открытый прокси. В сборках ISPmanager он
+    # выключен по умолчанию, дублируем явно, чтобы не зависеть от этого.
+    ProxyRequests Off
+    ProxyPreserveHost On
+
+    # WebSocket. Без отдельного правила для ws:// рукопожатие Upgrade не
+    # доходит до приложения, и терминалы не подключаются: страница панели
+    # открывается, а сессия не создаётся.
+    <IfModule mod_rewrite.c>
+        RewriteEngine On
+        RewriteCond %{HTTP:Upgrade} =websocket [NC]
+        RewriteCond %{HTTP:Connection} upgrade [NC]
+        RewriteRule ^@PREFIX@(.*)$ ws://127.0.0.1:@PORT@/$1 [P,L]
+    </IfModule>
+
+    ProxyPass @PREFIX@ http://127.0.0.1:@PORT@/ timeout=3600 connectiontimeout=15 retry=1 flushpackets=on
+    ProxyPassReverse @PREFIX@ http://127.0.0.1:@PORT@/
+    ProxyPassReverseCookiePath / @PREFIX@
+
+    <Location @PREFIX@>
+        Require all granted
+        <IfModule mod_headers.c>
+            RequestHeader set X-Forwarded-Proto "https" env=HTTPS
+            RequestHeader set X-Forwarded-Prefix "@PREFIX_BARE@"
+            Header always set X-Robots-Tag "noindex, nofollow"
+            Header always set Cache-Control "no-store"
+        </IfModule>
+    </Location>
+
+    # Без завершающего слэша: /panel -> /panel/
+    <IfModule mod_alias.c>
+        RedirectMatch 301 ^@PREFIX_BARE@$ https://@DOMAIN@@PREFIX@
+    </IfModule>
+</IfModule>

@@ -1,0 +1,86 @@
+# Проксирование веб-панели платформы на локальный порт.
+#
+# Куда кладётся: в каталог ресурсов КОНКРЕТНОГО сайта, который ISPmanager
+# подключает в его server-секцию директивой include. Для Debian-сборок это
+# /etc/nginx/vhosts-resources/@DOMAIN@/. Точный путь берётся из ispmgr.conf
+# (параметр path nginx-vhosts-resources) -- см. reverse-proxy.md.
+#
+# Почему именно туда: файл в этом каталоге переживает перегенерацию
+# конфигурации сайта панелью, а правки в самом файле сайта -- нет.
+#
+# Здесь нет директив server и http: файл включается ВНУТРЬ server-секции, и
+# любая директива уровня http (map, upstream) вызовет ошибку конфигурации.
+#
+# Подстановки выполняет deploy-panel.sh: @DOMAIN@, @PREFIX@, @PREFIX_BARE@,
+# @PORT@. Файл с подставленными значениями называется 10-electerm-panel.conf.
+
+# Без завершающего слэша: /panel -> /panel/. Иначе относительные ссылки внутри
+# панели считаются от корня сайта.
+location = @PREFIX_BARE@ {
+    return 301 https://@DOMAIN@@PREFIX@;
+}
+
+# Модификатор ^~ обязателен. Конфигурация сайта, созданная ISPmanager,
+# содержит regex-location для статики (.js, .css, изображения). Без ^~ такие
+# запросы внутри @PREFIX@ уйдут в этот regex-location и будут искаться в корне
+# сайта на диске, то есть панель отдаст 404 на свои же файлы.
+location ^~ @PREFIX@ {
+    # Include подключается и в HTTP-, и в HTTPS-секцию сайта. Панель работает
+    # с учётными данными, поэтому по http её отдавать нельзя.
+    if ($scheme != "https") {
+        return 301 https://@DOMAIN@$request_uri;
+    }
+
+    # Завершающий слэш в proxy_pass срезает @PREFIX@ из пути: приложение
+    # получает запрос от корня. Если панель отдаёт HTML, но её собственные
+    # скрипты и стили получают 404, значит сборка формирует абсолютные ссылки
+    # от корня и ей нужен базовый путь -- см. reverse-proxy.md, раздел про
+    # ограничения.
+    proxy_pass http://127.0.0.1:@PORT@/;
+
+    # --- WebSocket -------------------------------------------------------
+    # Без этих трёх директив терминалы не работают вообще: панель держит
+    # постоянное соединение, а nginx по умолчанию проксирует по HTTP/1.0 и
+    # вырезает хоп-заголовки, поэтому рукопожатие Upgrade не доходит до
+    # приложения. Внешне это выглядит как «панель открылась, а терминал не
+    # подключается» или как бесконечное переподключение.
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    # $http_connection, а не жёсткое "upgrade" и не $connection_upgrade:
+    # переменная из map недоступна, потому что map объявляется на уровне http,
+    # а этот файл включается внутрь server. Проброс заголовка клиента даёт
+    # верное поведение и для обычных запросов, и для рукопожатия. Вариант с
+    # map описан в reverse-proxy.md, он требует правки на уровне http.
+    proxy_set_header Connection $http_connection;
+
+    # --- Адрес и схема клиента ------------------------------------------
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Prefix @PREFIX_BARE@;
+
+    # --- Таймауты и буферизация -----------------------------------------
+    # Сессия терминала может молчать часами (открытый ssh без ввода).
+    # Штатные 60 секунд proxy_read_timeout рвут такое соединение, и для
+    # пользователя это выглядит как самопроизвольный выход из панели.
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+    proxy_connect_timeout 15s;
+    # Буферизация ответа ломает интерактивность: вывод команды доходит до
+    # браузера порциями с задержкой.
+    proxy_buffering off;
+    proxy_request_buffering off;
+    # Передача файлов через панель.
+    client_max_body_size 512m;
+
+    # --- Ссылки и cookie при работе на подпути ---------------------------
+    proxy_redirect http://127.0.0.1:@PORT@/ @PREFIX@;
+    proxy_redirect / @PREFIX@;
+    proxy_cookie_path / @PREFIX@;
+
+    # Панель не должна попадать в индекс и в кеши.
+    add_header X-Robots-Tag "noindex, nofollow" always;
+    add_header Cache-Control "no-store" always;
+}

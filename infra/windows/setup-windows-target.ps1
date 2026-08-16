@@ -32,6 +32,7 @@ param(
     [switch]$MeshOnly,
     [string]$MeshSubnet = '10.99.0.0/24',
     [switch]$Harden,
+    [switch]$KeepWinRm,
     [string]$CredentialOut = 'C:\ProgramData\electerm-platform\new-users.txt'
 )
 
@@ -176,8 +177,7 @@ if ($Harden) {
 
     # WinRM закрывается снаружи. Управление идёт по SSH, а WinRM на 5985 -- это
     # ещё одна дверь, принимающая пароль, причём на облачных образах Windows её
-    # правило нередко открыто для любых адресов. Служба остаётся работать для
-    # локальных задач, недоступным становится только сетевой вход.
+    # правило нередко открыто для любых адресов.
     $winrmRules = Get-NetFirewallRule -ErrorAction SilentlyContinue |
         Where-Object { $_.Enabled -eq 'True' -and $_.Direction -eq 'Inbound' -and
             ($_.DisplayName -match 'WinRM|Windows Remote Management') }
@@ -186,6 +186,25 @@ if ($Harden) {
         "WinRM закрыт снаружи: отключено правил $($winrmRules.Count)."
     } else {
         'Открытых правил WinRM не найдено.'
+    }
+
+    # Одного правила брандмауэра мало: слушатель на 5985/5986 остаётся, и любое
+    # изменение правил снова делает его достижимым. Слушатель убирается вместе со
+    # службой. Отключать её безопасно, только если ей никто не пользуется: SSH,
+    # RDP и локальные задачи от неё не зависят, но удалённое управление через
+    # Windows Admin Center и Enter-PSSession перестанет работать.
+    if (-not $KeepWinRm) {
+        $winrm = Get-Service -Name WinRM -ErrorAction SilentlyContinue
+        if ($winrm) {
+            Disable-WSManCredSSP -Role Server -ErrorAction SilentlyContinue | Out-Null
+            Get-ChildItem WSMan:\localhost\Listener -ErrorAction SilentlyContinue |
+                Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+            Stop-Service WinRM -Force -ErrorAction SilentlyContinue
+            Set-Service WinRM -StartupType Disabled
+            "Служба WinRM остановлена и отключена (вернуть: Set-Service WinRM -StartupType Automatic)."
+        }
+    } else {
+        'Служба WinRM оставлена работать по флагу -KeepWinRm.'
     }
 }
 

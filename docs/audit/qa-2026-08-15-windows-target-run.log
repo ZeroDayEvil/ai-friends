@@ -1,0 +1,140 @@
+
+============================================================================
+  Приёмка Windows-цели: INSTANCE-202608
+  Запуск: 2026-08-16 02:27:21 +00:00  под учётной записью WORKGROUP\root
+============================================================================
+
+[INFO   ] OS-01   Версия и тип ОС
+            ожидалось : Windows Server 2025 Datacenter, build 26100
+            фактически: Microsoft Windows Server 2025 Datacenter, build 26100.0, тип: серверная, имя: INSTANCE-202608, домен/группа: WORKGROUP
+[INFO   ] OS-02   Время работы с последней загрузки
+            фактически: загрузка 2026-08-15 21:32:11, работает 0 д 4 ч 55 мин
+            примечание: Проверка «после перезагрузки поднимается само» требует управляемого рестарта: см. StartMode служб ниже.
+[WARN   ] OS-03   Ожидается ли перезагрузка
+            ожидалось : нет незавершённых установок обновлений и компонентов
+            фактически: жёстких признаков нет; отложенные операции с файлами: PendingFileRenameOperations: 15 записей
+            примечание: первые записи: *1\??\C:\Windows\SystemTemp\msedgeupdate.dll{FC51E3AB-53DE-4CA5-9E3A-CA6C8F96408A} | *1\??\C:\Program Files (x86)\Microsoft\EdgeUpdate\1.3.251.23 | *1\??\C:\Windows\System32\spool\V4Dirs\57BDB17B-52B5-447A-8887-655061159735\14f90d18.BUD | *2\??\C:\Windows\system32\spool\V4Dirs\57BDB17B-52B5-447A-8887-655061159735\14f90d18.gpd
+[BLOCKED] OS-04   Регресс: после перезагрузки узел поднимается сам
+            ожидалось : sshd и слушатель RDP доступны без ручных действий после рестарта
+            фактически: проверка требует управляемой перезагрузки и согласия владельца, скрипт её не выполняет
+            примечание: Косвенные свидетельства: SSH-02 (StartMode службы sshd) и RDP-04 (TermService).
+[PASS   ] SSH-01  Служба sshd запущена
+            ожидалось : State=Running
+            фактически: State=Running, Status=OK, PID=1940
+[PASS   ] SSH-02  Автозапуск sshd
+            ожидалось : StartMode=Auto
+            фактически: StartMode=Auto, DelayedAutoStart=False, запуск от LocalSystem
+            примечание: Ручной запуск после перезагрузки — дефект автоматизации.
+[PASS   ] SSH-03  sshd: PasswordAuthentication
+            ожидалось : PasswordAuthentication no
+            фактически: PasswordAuthentication no
+            примечание: источник: sshd -T (C:\Windows\System32\OpenSSH\sshd.exe); в файле sshd_config: PasswordAuthentication no
+[PASS   ] SSH-04  sshd: PubkeyAuthentication
+            ожидалось : PubkeyAuthentication yes
+            фактически: PubkeyAuthentication yes
+            примечание: источник: sshd -T (C:\Windows\System32\OpenSSH\sshd.exe); в файле sshd_config: PubkeyAuthentication yes
+[PASS   ] SSH-05  sshd: MaxAuthTries
+            ожидалось : MaxAuthTries 3
+            фактически: MaxAuthTries 3
+            примечание: источник: sshd -T (C:\Windows\System32\OpenSSH\sshd.exe); в файле sshd_config: MaxAuthTries 3
+[PASS   ] SSH-06  sshd: LoginGraceTime
+            ожидалось : LoginGraceTime 30
+            фактически: LoginGraceTime 30
+            примечание: источник: sshd -T (C:\Windows\System32\OpenSSH\sshd.exe); в файле sshd_config: LoginGraceTime 30
+[PASS   ] SSH-07  Блоки Match не переопределяют способ входа
+            ожидалось : внутри Match нет PasswordAuthentication / PubkeyAuthentication / PermitEmptyPasswords / AuthenticationMethods
+            фактически: блоки Match: Match Group administrators
+            примечание: Прочие директивы в Match (штатные): Match Group administrators -> AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys. Директива внутри Match действует для подходящих подключений и может отменить общий запрет пароля.
+[PASS   ] SSH-08  Оболочка sshd по умолчанию
+            ожидалось : powershell.exe
+            фактически: DefaultShell=C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe, файл существует: True
+[PASS   ] SSH-09  Файл administrators_authorized_keys
+            ожидалось : C:\ProgramData\ssh\administrators_authorized_keys существует и содержит ключи
+            фактически: ключей: 1, размер 105 Б, изменён 2026-08-15 22:12:41
+            примечание: отпечатки: 256 SHA256:F3WLdSPtnNQhVZU7H0ngxFdswQpc33vVG45nxqL+jzk winsrv-test-2026-08-15 (ED25519)
+[PASS   ] SSH-10  Права на administrators_authorized_keys
+            ожидалось : владелец и все ACE — только Administrators (S-1-5-32-544) или SYSTEM (S-1-5-18), наследование отключено
+            фактически: владелец=BUILTIN\Administrators [S-1-5-32-544], наследование отключено=True, ACE: NT AUTHORITY\SYSTEM=FullControl; BUILTIN\Administrators=FullControl
+            примечание: sshd молча отказывает в аутентификации, если на файле ключей есть права кроме Administrators и SYSTEM.
+[PASS   ] RDP-01  NLA для RDP включена
+            ожидалось : UserAuthenticationRequired=1
+            фактически: UserAuthenticationRequired=1 (реестр UserAuthentication=1)
+            примечание: Без NLA сеанс создаётся до аутентификации: неаутентифицированный клиент расходует ресурсы, подбор пароля упрощается.
+[PASS   ] RDP-02  Уровень безопасности RDP
+            ожидалось : SecurityLayer=2 (TLS)
+            фактически: SecurityLayer=2 (TLS (SSL)), реестр SecurityLayer=2
+[INFO   ] RDP-03  Подключения RDP разрешены
+            ожидалось : fDenyTSConnections=0 при работающем RDP
+            фактически: fDenyTSConnections=0, порт слушателя=3389, шифрование=3
+[PASS   ] RDP-04  Служба TermService
+            ожидалось : State=Running
+            фактически: State=Running, StartMode=Manual
+            примечание: StartMode=Manual штатен: службу запускает триггер входящего подключения.
+[WARN   ] FW-01   Правила брандмауэра для входящего 22/TCP
+            ожидалось : разрешено только с доверенных адресов
+            фактически: правил с явным портом: 2; «OpenSSH SSH Server (sshd)» профиль=Private порты=22/TCP RemoteAddress=Any область=любая программа || «OpenSSH Server (sshd) 22» профиль=Any порты=22/TCP RemoteAddress=Any область=любая программа
+            примечание: Порт 22 принимает подключения с любого адреса (RemoteAddress=Any), то есть из интернета. Правил с LocalPort=Any, покрывающих порт: 16; из них без ограничения по программе и адресу: «Remote Desktop - Shadow (TCP-In)» профиль=Any, «Wireless Display (TCP-In)» профиль=Any, «WFD Driver-only (TCP-In)» профиль=Any, «Work or school account» профиль=Domain, Private, «Desktop App Web Viewer» профиль=Domain, Private, Public, «Your account» профиль=Domain, Private, «Windows Shell Experience» профиль=Domain, Private, «Start» профиль=Domain, Private, «Windows Feature Experience Pack» профиль=Domain, Private, Public, «Windows Feature Experience Pack» профиль=Domain, Private, «Windows Feature Experience Pack» профиль=Domain, Private, Public, «Windows Feature Experience Pack» профиль=Domain, Private, «@{Microsoft.DesktopAppInstaller_1.26.510.0_x64__8wekyb3d8bbwe?ms-resource://Microsoft.DesktopAppInstaller/Resources/appDisplayName}» профиль=Domain, Private, «@{Microsoft.WindowsFeedbackHub_1.2401.20253.0_x64__8wekyb3d8bbwe?ms-resource://Microsoft.WindowsFeedbackHub/Resources/AppStoreName}» профиль=Domain, Private, «Windows Security» профиль=Domain, Private
+[WARN   ] FW-02   Правила брандмауэра для входящего 3389/TCP
+            ожидалось : разрешено только с доверенных адресов
+            фактически: правил с явным портом: 1; «Remote Desktop - User Mode (TCP-In)» профиль=Any порты=3389/TCP RemoteAddress=Any область=любая программа
+            примечание: Порт 3389 принимает подключения с любого адреса (RemoteAddress=Any), то есть из интернета. Правил с LocalPort=Any, покрывающих порт: 16; из них без ограничения по программе и адресу: «Remote Desktop - Shadow (TCP-In)» профиль=Any, «Wireless Display (TCP-In)» профиль=Any, «WFD Driver-only (TCP-In)» профиль=Any, «Work or school account» профиль=Domain, Private, «Desktop App Web Viewer» профиль=Domain, Private, Public, «Your account» профиль=Domain, Private, «Windows Shell Experience» профиль=Domain, Private, «Start» профиль=Domain, Private, «Windows Feature Experience Pack» профиль=Domain, Private, Public, «Windows Feature Experience Pack» профиль=Domain, Private, «Windows Feature Experience Pack» профиль=Domain, Private, Public, «Windows Feature Experience Pack» профиль=Domain, Private, «@{Microsoft.DesktopAppInstaller_1.26.510.0_x64__8wekyb3d8bbwe?ms-resource://Microsoft.DesktopAppInstaller/Resources/appDisplayName}» профиль=Domain, Private, «@{Microsoft.WindowsFeedbackHub_1.2401.20253.0_x64__8wekyb3d8bbwe?ms-resource://Microsoft.WindowsFeedbackHub/Resources/AppStoreName}» профиль=Domain, Private, «Windows Security» профиль=Domain, Private
+[PASS   ] FW-03   Профили брандмауэра включены
+            ожидалось : Domain, Private, Public: Enabled=True, входящие по умолчанию Block
+            фактически: Domain=Enabled:True,Inbound:NotConfigured,Outbound:NotConfigured; Private=Enabled:True,Inbound:NotConfigured,Outbound:NotConfigured; Public=Enabled:True,Inbound:NotConfigured,Outbound:NotConfigured
+            примечание: NotConfigured трактуется как поведение по умолчанию: входящие блокируются, исходящие разрешаются. Ограничения исходящего трафика на этом узле нет.
+[FAIL   ] FW-05   Лишние порты не разрешены брандмауэром
+            ожидалось : нет включённых правил, разрешающих с любого адреса порты 135, 139, 445, 5985, 5986, 47001
+            фактически: 5985: «Windows Remote Management (HTTP-In)» профиль=Domain, Private RemoteAddress=Any || 5986: «Windows Remote Management (HTTPS-In)» профиль=Any RemoteAddress=Any
+            примечание: Проверяется правило узла, а не доступность снаружи: облачный брандмауэр может закрывать порт независимо. Внешнюю доступность проверяйте с машины оркестратора.
+[INFO   ] FW-04   Профиль сети на интерфейсах
+            ожидалось : профиль определяет, какие правила действуют
+            фактически: Ethernet=Public
+            примечание: Правило, привязанное только к Private, не действует, если интерфейс отнесён к Public.
+[INFO   ] NET-01  Порты, слушающие на всех интерфейсах
+            ожидалось : по назначению узла ожидаются 22 (sshd) и 3389 (RDP); остальное — поверхность атаки
+            фактически: 22/sshd, 135/svchost, 445/System, 3389/svchost, 5985/System, 5986/System, 20201/google-cloud-metrics-agent_windows_amd64, 20202/fluent-bit, 47001/System, 49664/lsass, 49665/wininit, 49666/svchost, 49667/svchost, 49669/spoolsv, 49673/services, 49701/svchost
+            примечание: Слушатель на 0.0.0.0 доступен снаружи, если его пропускает брандмауэр.
+[WARN   ] WRM-01  WinRM как дополнительный канал управления
+            ожидалось : в environments.md WinRM не заявлен; канал управления — только SSH по ключу
+            фактически: State=Running, StartMode=Auto; слушатели: Transport = HTTP, Port = 5985, ListeningOn = 10.128.0.2, 127.0.0.1, ::1, fe80::8086:4750:d789:366c%4, Transport = HTTPS, Port = 5986, ListeningOn = 10.128.0.2, 127.0.0.1, ::1, fe80::8086:4750:d789:366c%4
+            примечание: WinRM аутентифицирует по паролю (Negotiate/NTLM), то есть в обход заявленного «входа только по ключу». Если он не нужен, службу и правила брандмауэра следует отключить.
+[INFO   ] WRM-02  Способы аутентификации WinRM
+            ожидалось : Basic=false, AllowUnencrypted=false
+            фактически: Basic=false, Kerberos=true, Negotiate=true, Certificate=false, CredSSP=false, CbtHardeningLevel=Relaxed, AllowUnencrypted=false
+[PASS   ] SMB-01  SMBv1 (серверная часть) выключен
+            ожидалось : EnableSMB1Protocol=False
+            фактически: EnableSMB1Protocol=False, EnableSMB2Protocol=True, RequireSecuritySignature=False
+[INFO   ] SMB-02  Компонент и драйвер SMB1
+            ожидалось : компонент Disabled, клиентский драйвер не запущен
+            фактически: компонент SMB1Protocol=Disabled, драйвер mrxsmb10=драйвер отсутствует
+            примечание: Отключение серверной части не удаляет клиентскую: исходящие подключения по SMBv1 остаются возможны.
+[INFO   ] RDS-01  Установленные роли RDS
+            ожидалось : по environments.md роли RDS не установлены
+            фактически: ни одна роль RDS не установлена
+            примечание: Состояние всех компонентов RDS-*: RDS-Connection-Broker=Available, RDS-Gateway=Available, RDS-Licensing=Available, RDS-RD-Server=Available, RDS-Virtualization=Available, RDS-Web-Access=Available, RDS-Licensing-UI=Available
+[INFO   ] RDS-02  Режим лицензирования Terminal Services
+            ожидалось : LicensingType=1 (административные сеансы), по environments.md
+            фактически: LicensingType=1 (только удалённое администрирование (максимум 2 сеанса)), PolicySourceLicensingType=0
+            примечание: При LicensingType=1 многопользовательские сценарии матрицы совместимости ограничены двумя административными сеансами.
+[INFO   ] ACC-01  Состав групп доступа
+            фактически: Administrators: INSTANCE-202608\Administrator [User/Local], INSTANCE-202608\root [User/Local]; Remote Desktop Users: пусто
+[INFO   ] ACC-02  Блокировка при подборе пароля
+            ожидалось : порог блокировки задан (RDP принимает пароль)
+            фактически: lockout threshold=10
+            примечание: Порог Never при открытом в интернет 3389 означает неограниченный подбор пароля.
+[PASS   ] ACC-04  Встроенная учётная запись Administrator и её блокировка
+            ожидалось : Administrator отключена либо AllowAdministratorLockout=1
+            фактически: Administrator: отключена, AllowAdministratorLockout=1; локальные учётные записи: Administrator=отключён, DefaultAccount=отключён, пароль не задан, Guest=отключён, пароль не задан, root=включён, WDAGUtilityAccount=отключён
+            примечание: Порог блокировки не распространяется на встроенного Administrator, если AllowAdministratorLockout не включён: при 3389 в интернете это неограниченный подбор пароля к этой записи.
+[INFO   ] ACC-03  Агент GCE (аварийный сброс пароля)
+            ожидалось : по environments.md служба остановлена, сброс пароля из консоли GCP недоступен
+            фактически: State=Stopped, StartMode=Disabled
+            примечание: Если агент не работает, при потере ключа единственный путь — пересоздание машины.
+
+----------------------------------------------------------------------------
+ИТОГО: PASS=16  FAIL=1  WARN=4  BLOCKED=1  INFO=12  (всего 34)
+Провалившиеся проверки: FW-05
+----------------------------------------------------------------------------
+--- BEGIN JSON ---
+[{"Id":"OS-01","Name":"Версия и тип ОС","Status":"INFO","Expected":"Windows Server 2025 Datacenter, build 26100","Actual":"Microsoft Windows Server 2025 Datacenter, build 26100.0, тип: серверная, имя: INSTANCE-202608, домен/группа: WORKGROUP","Note":""},{"Id":"OS-02","Name":"Время работы с последней загрузки","Status":"INFO","Expected":"","Actual":"загрузка 2026-08-15 21:32:11, работает 0 д 4 ч 55 мин","Note":"Проверка «после перезагрузки поднимается само» требует управляемого рестарта: см. StartMode служб ниже."},{"Id":"OS-03","Name":"Ожидается ли перезагрузка","Status":"WARN","Expected":"нет незавершённых установок обновлений и компонентов","Actual":"жёстких признаков нет; отложенные операции с файлами: PendingFileRenameOperations: 15 записей","Note":"первые записи: *1\\??\\C:\\Windows\\SystemTemp\\msedgeupdate.dll{FC51E3AB-53DE-4CA5-9E3A-CA6C8F96408A} | *1\\??\\C:\\Program Files (x86)\\Microsoft\\EdgeUpdate\\1.3.251.23 | *1\\??\\C:\\Windows\\System32\\spool\\V4Dirs\\57BDB17B-52B5-447A-8887-655061159735\\14f90d18.BUD | *2\\??\\C:\\Windows\\system32\\spool\\V4Dirs\\57BDB17B-52B5-447A-8887-655061159735\\14f90d18.gpd"},{"Id":"OS-04","Name":"Регресс: после перезагрузки узел поднимается сам","Status":"BLOCKED","Expected":"sshd и слушатель RDP доступны без ручных действий после рестарта","Actual":"проверка требует управляемой перезагрузки и согласия владельца, скрипт её не выполняет","Note":"Косвенные свидетельства: SSH-02 (StartMode службы sshd) и RDP-04 (TermService)."},{"Id":"SSH-01","Name":"Служба sshd запущена","Status":"PASS","Expected":"State=Running","Actual":"State=Running, Status=OK, PID=1940","Note":""},{"Id":"SSH-02","Name":"Автозапуск sshd","Status":"PASS","Expected":"StartMode=Auto","Actual":"StartMode=Auto, DelayedAutoStart=False, запуск от LocalSystem","Note":"Ручной запуск после перезагрузки — дефект автоматизации."},{"Id":"SSH-03","Name":"sshd: PasswordAuthentication","Status":"PASS","Expected":"PasswordAuthentication no","Actual":"PasswordAuthentication no","Note":"источник: sshd -T (C:\\Windows\\System32\\OpenSSH\\sshd.exe); в файле sshd_config: PasswordAuthentication no"},{"Id":"SSH-04","Name":"sshd: PubkeyAuthentication","Status":"PASS","Expected":"PubkeyAuthentication yes","Actual":"PubkeyAuthentication yes","Note":"источник: sshd -T (C:\\Windows\\System32\\OpenSSH\\sshd.exe); в файле sshd_config: PubkeyAuthentication yes"},{"Id":"SSH-05","Name":"sshd: MaxAuthTries","Status":"PASS","Expected":"MaxAuthTries 3","Actual":"MaxAuthTries 3","Note":"источник: sshd -T (C:\\Windows\\System32\\OpenSSH\\sshd.exe); в файле sshd_config: MaxAuthTries 3"},{"Id":"SSH-06","Name":"sshd: LoginGraceTime","Status":"PASS","Expected":"LoginGraceTime 30","Actual":"LoginGraceTime 30","Note":"источник: sshd -T (C:\\Windows\\System32\\OpenSSH\\sshd.exe); в файле sshd_config: LoginGraceTime 30"},{"Id":"SSH-07","Name":"Блоки Match не переопределяют способ входа","Status":"PASS","Expected":"внутри Match нет PasswordAuthentication / PubkeyAuthentication / PermitEmptyPasswords / AuthenticationMethods","Actual":"блоки Match: Match Group administrators","Note":"Прочие директивы в Match (штатные): Match Group administrators -\u003e AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys. Директива внутри Match действует для подходящих подключений и может отменить общий запрет пароля."},{"Id":"SSH-08","Name":"Оболочка sshd по умолчанию","Status":"PASS","Expected":"powershell.exe","Actual":"DefaultShell=C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe, файл существует: True","Note":""},{"Id":"SSH-09","Name":"Файл administrators_authorized_keys","Status":"PASS","Expected":"C:\\ProgramData\\ssh\\administrators_authorized_keys существует и содержит ключи","Actual":"ключей: 1, размер 105 Б, изменён 2026-08-15 22:12:41","Note":"отпечатки: 256 SHA256:F3WLdSPtnNQhVZU7H0ngxFdswQpc33vVG45nxqL+jzk winsrv-test-2026-08-15 (ED25519)"},{"Id":"SSH-10","Name":"Права на administrators_authorized_keys","Status":"PASS","Expected":"владелец и все ACE — только Administrators (S-1-5-32-544) или SYSTEM (S-1-5-18), наследование отключено","Actual":"владелец=BUILTIN\\Administrators [S-1-5-32-544], наследование отключено=True, ACE: NT AUTHORITY\\SYSTEM=FullControl; BUILTIN\\Administrators=FullControl","Note":"sshd молча отказывает в аутентификации, если на файле ключей есть права кроме Administrators и SYSTEM."},{"Id":"RDP-01","Name":"NLA для RDP включена","Status":"PASS","Expected":"UserAuthenticationRequired=1","Actual":"UserAuthenticationRequired=1 (реестр UserAuthentication=1)","Note":"Без NLA сеанс создаётся до аутентификации: неаутентифицированный клиент расходует ресурсы, подбор пароля упрощается."},{"Id":"RDP-02","Name":"Уровень безопасности RDP","Status":"PASS","Expected":"SecurityLayer=2 (TLS)","Actual":"SecurityLayer=2 (TLS (SSL)), реестр SecurityLayer=2","Note":""},{"Id":"RDP-03","Name":"Подключения RDP разрешены","Status":"INFO","Expected":"fDenyTSConnections=0 при работающем RDP","Actual":"fDenyTSConnections=0, порт слушателя=3389, шифрование=3","Note":""},{"Id":"RDP-04","Name":"Служба TermService","Status":"PASS","Expected":"State=Running","Actual":"State=Running, StartMode=Manual","Note":"StartMode=Manual штатен: службу запускает триггер входящего подключения."},{"Id":"FW-01","Name":"Правила брандмауэра для входящего 22/TCP","Status":"WARN","Expected":"разрешено только с доверенных адресов","Actual":"правил с явным портом: 2; «OpenSSH SSH Server (sshd)» профиль=Private порты=22/TCP RemoteAddress=Any область=любая программа || «OpenSSH Server (sshd) 22» профиль=Any порты=22/TCP RemoteAddress=Any область=любая программа","Note":"Порт 22 принимает подключения с любого адреса (RemoteAddress=Any), то есть из интернета. Правил с LocalPort=Any, покрывающих порт: 16; из них без ограничения по программе и адресу: «Remote Desktop - Shadow (TCP-In)» профиль=Any, «Wireless Display (TCP-In)» профиль=Any, «WFD Driver-only (TCP-In)» профиль=Any, «Work or school account» профиль=Domain, Private, «Desktop App Web Viewer» профиль=Domain, Private, Public, «Your account» профиль=Domain, Private, «Windows Shell Experience» профиль=Domain, Private, «Start» профиль=Domain, Private, «Windows Feature Experience Pack» профиль=Domain, Private, Public, «Windows Feature Experience Pack» профиль=Domain, Private, «Windows Feature Experience Pack» профиль=Domain, Private, Public, «Windows Feature Experience Pack» профиль=Domain, Private, «@{Microsoft.DesktopAppInstaller_1.26.510.0_x64__8wekyb3d8bbwe?ms-resource://Microsoft.DesktopAppInstaller/Resources/appDisplayName}» профиль=Domain, Private, «@{Microsoft.WindowsFeedbackHub_1.2401.20253.0_x64__8wekyb3d8bbwe?ms-resource://Microsoft.WindowsFeedbackHub/Resources/AppStoreName}» профиль=Domain, Private, «Windows Security» профиль=Domain, Private"},{"Id":"FW-02","Name":"Правила брандмауэра для входящего 3389/TCP","Status":"WARN","Expected":"разрешено только с доверенных адресов","Actual":"правил с явным портом: 1; «Remote Desktop - User Mode (TCP-In)» профиль=Any порты=3389/TCP RemoteAddress=Any область=любая программа","Note":"Порт 3389 принимает подключения с любого адреса (RemoteAddress=Any), то есть из интернета. Правил с LocalPort=Any, покрывающих порт: 16; из них без ограничения по программе и адресу: «Remote Desktop - Shadow (TCP-In)» профиль=Any, «Wireless Display (TCP-In)» профиль=Any, «WFD Driver-only (TCP-In)» профиль=Any, «Work or school account» профиль=Domain, Private, «Desktop App Web Viewer» профиль=Domain, Private, Public, «Your account» профиль=Domain, Private, «Windows Shell Experience» профиль=Domain, Private, «Start» профиль=Domain, Private, «Windows Feature Experience Pack» профиль=Domain, Private, Public, «Windows Feature Experience Pack» профиль=Domain, Private, «Windows Feature Experience Pack» профиль=Domain, Private, Public, «Windows Feature Experience Pack» профиль=Domain, Private, «@{Microsoft.DesktopAppInstaller_1.26.510.0_x64__8wekyb3d8bbwe?ms-resource://Microsoft.DesktopAppInstaller/Resources/appDisplayName}» профиль=Domain, Private, «@{Microsoft.WindowsFeedbackHub_1.2401.20253.0_x64__8wekyb3d8bbwe?ms-resource://Microsoft.WindowsFeedbackHub/Resources/AppStoreName}» профиль=Domain, Private, «Windows Security» профиль=Domain, Private"},{"Id":"FW-03","Name":"Профили брандмауэра включены","Status":"PASS","Expected":"Domain, Private, Public: Enabled=True, входящие по умолчанию Block","Actual":"Domain=Enabled:True,Inbound:NotConfigured,Outbound:NotConfigured; Private=Enabled:True,Inbound:NotConfigured,Outbound:NotConfigured; Public=Enabled:True,Inbound:NotConfigured,Outbound:NotConfigured","Note":"NotConfigured трактуется как поведение по умолчанию: входящие блокируются, исходящие разрешаются. Ограничения исходящего трафика на этом узле нет."},{"Id":"FW-05","Name":"Лишние порты не разрешены брандмауэром","Status":"FAIL","Expected":"нет включённых правил, разрешающих с любого адреса порты 135, 139, 445, 5985, 5986, 47001","Actual":"5985: «Windows Remote Management (HTTP-In)» профиль=Domain, Private RemoteAddress=Any || 5986: «Windows Remote Management (HTTPS-In)» профиль=Any RemoteAddress=Any","Note":"Проверяется правило узла, а не доступность снаружи: облачный брандмауэр может закрывать порт независимо. Внешнюю доступность проверяйте с машины оркестратора."},{"Id":"FW-04","Name":"Профиль сети на интерфейсах","Status":"INFO","Expected":"профиль определяет, какие правила действуют","Actual":"Ethernet=Public","Note":"Правило, привязанное только к Private, не действует, если интерфейс отнесён к Public."},{"Id":"NET-01","Name":"Порты, слушающие на всех интерфейсах","Status":"INFO","Expected":"по назначению узла ожидаются 22 (sshd) и 3389 (RDP); остальное — поверхность атаки","Actual":"22/sshd, 135/svchost, 445/System, 3389/svchost, 5985/System, 5986/System, 20201/google-cloud-metrics-agent_windows_amd64, 20202/fluent-bit, 47001/System, 49664/lsass, 49665/wininit, 49666/svchost, 49667/svchost, 49669/spoolsv, 49673/services, 49701/svchost","Note":"Слушатель на 0.0.0.0 доступен снаружи, если его пропускает брандмауэр."},{"Id":"WRM-01","Name":"WinRM как дополнительный канал управления","Status":"WARN","Expected":"в environments.md WinRM не заявлен; канал управления — только SSH по ключу","Actual":"State=Running, StartMode=Auto; слушатели: Transport = HTTP, Port = 5985, ListeningOn = 10.128.0.2, 127.0.0.1, ::1, fe80::8086:4750:d789:366c%4, Transport = HTTPS, Port = 5986, ListeningOn = 10.128.0.2, 127.0.0.1, ::1, fe80::8086:4750:d789:366c%4","Note":"WinRM аутентифицирует по паролю (Negotiate/NTLM), то есть в обход заявленного «входа только по ключу». Если он не нужен, службу и правила брандмауэра следует отключить."},{"Id":"WRM-02","Name":"Способы аутентификации WinRM","Status":"INFO","Expected":"Basic=false, AllowUnencrypted=false","Actual":"Basic=false, Kerberos=true, Negotiate=true, Certificate=false, CredSSP=false, CbtHardeningLevel=Relaxed, AllowUnencrypted=false","Note":""},{"Id":"SMB-01","Name":"SMBv1 (серверная часть) выключен","Status":"PASS","Expected":"EnableSMB1Protocol=False","Actual":"EnableSMB1Protocol=False, EnableSMB2Protocol=True, RequireSecuritySignature=False","Note":""},{"Id":"SMB-02","Name":"Компонент и драйвер SMB1","Status":"INFO","Expected":"компонент Disabled, клиентский драйвер не запущен","Actual":"компонент SMB1Protocol=Disabled, драйвер mrxsmb10=драйвер отсутствует","Note":"Отключение серверной части не удаляет клиентскую: исходящие подключения по SMBv1 остаются возможны."},{"Id":"RDS-01","Name":"Установленные роли RDS","Status":"INFO","Expected":"по environments.md роли RDS не установлены","Actual":"ни одна роль RDS не установлена","Note":"Состояние всех компонентов RDS-*: RDS-Connection-Broker=Available, RDS-Gateway=Available, RDS-Licensing=Available, RDS-RD-Server=Available, RDS-Virtualization=Available, RDS-Web-Access=Available, RDS-Licensing-UI=Available"},{"Id":"RDS-02","Name":"Режим лицензирования Terminal Services","Status":"INFO","Expected":"LicensingType=1 (административные сеансы), по environments.md","Actual":"LicensingType=1 (только удалённое администрирование (максимум 2 сеанса)), PolicySourceLicensingType=0","Note":"При LicensingType=1 многопользовательские сценарии матрицы совместимости ограничены двумя административными сеансами."},{"Id":"ACC-01","Name":"Состав групп доступа","Status":"INFO","Expected":"","Actual":"Administrators: INSTANCE-202608\\Administrator [User/Local], INSTANCE-202608\\root [User/Local]; Remote Desktop Users: пусто","Note":""},{"Id":"ACC-02","Name":"Блокировка при подборе пароля","Status":"INFO","Expected":"порог блокировки задан (RDP принимает пароль)","Actual":"lockout threshold=10","Note":"Порог Never при открытом в интернет 3389 означает неограниченный подбор пароля."},{"Id":"ACC-04","Name":"Встроенная учётная запись Administrator и её блокировка","Status":"PASS","Expected":"Administrator отключена либо AllowAdministratorLockout=1","Actual":"Administrator: отключена, AllowAdministratorLockout=1; локальные учётные записи: Administrator=отключён, DefaultAccount=отключён, пароль не задан, Guest=отключён, пароль не задан, root=включён, WDAGUtilityAccount=отключён","Note":"Порог блокировки не распространяется на встроенного Administrator, если AllowAdministratorLockout не включён: при 3389 в интернете это неограниченный подбор пароля к этой записи."},{"Id":"ACC-03","Name":"Агент GCE (аварийный сброс пароля)","Status":"INFO","Expected":"по environments.md служба остановлена, сброс пароля из консоли GCP недоступен","Actual":"State=Stopped, StartMode=Disabled","Note":"Если агент не работает, при потере ключа единственный путь — пересоздание машины."}]
+--- END JSON ---

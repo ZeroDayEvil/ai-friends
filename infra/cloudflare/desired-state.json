@@ -1,0 +1,88 @@
+{
+  "$comment": [
+    "Желаемое состояние Cloudflare для платформы. Файл читают preflight.ps1 и apply.ps1.",
+    "Идентификатор аккаунта не секрет, он виден в любом ответе API и в адресе панели.",
+    "Токены сюда не кладутся никогда: они берутся из переменных окружения.",
+    "Состояние проверено читающими вызовами 16.08.2026, см. docs/audit/cloudflare-readiness-2026-08-16.md"
+  ],
+
+  "account_id": "6e1c7d02266ee072781ec2a07e6fc64a",
+
+  "tunnel": {
+    "name": "platform",
+    "origin_service": "http://127.0.0.1:5577",
+    "$comment": "Имя совпадает с docs/design/runbook.md, шаг 3. Адрес источника -- loopback узла: наружу порт не открыт."
+  },
+
+  "access": {
+    "$comment": [
+      "team_name задаёт владелец в панели при включении Zero Trust, изменить его потом нельзя.",
+      "allowed_emails пустой намеренно: apply.ps1 откажется создавать политику с пустым списком,",
+      "иначе получилось бы приложение, открытое всем -- худший исход, чем отсутствие приложения."
+    ],
+    "team_name": "",
+    "session_duration": "24h",
+    "require_mfa": true,
+    "allowed_emails": []
+  },
+
+  "zone_defaults": {
+    "$comment": "Full (strict) обязателен: при Flexible участок Cloudflare -- источник идёт без шифрования.",
+    "ssl": "strict",
+    "always_use_https": "on",
+    "min_tls_version": "1.2"
+  },
+
+  "zones": [
+    {
+      "name": "anubis.locker",
+      "enabled": true,
+      "role": "Панель для сотрудников, вход через Zero Trust Access",
+      "registrar": "Namecheap",
+      "hostnames": [
+        { "name": "anubis.locker", "via_tunnel": true, "access": true },
+        { "name": "www.anubis.locker", "via_tunnel": true, "access": true }
+      ]
+    },
+    {
+      "name": "vpn-service-api.tech",
+      "enabled": true,
+      "role": "Канал клиент-сервер: RDP, VNC, MCP через прокси",
+      "registrar": "REG.RU",
+      "hostnames": [
+        { "name": "api.vpn-service-api.tech", "via_tunnel": true, "access": false }
+      ]
+    },
+    {
+      "name": "open-anubis.ink",
+      "enabled": false,
+      "blocked_reason": "Домен не зарегистрирован: RDAP отвечает 404, в DNS NXDOMAIN (проверено 16.08.2026). Добавить зону в Cloudflare нельзя, пока домен не куплен.",
+      "role": "Распределение нагрузки агентов",
+      "registrar": null,
+      "hostnames": [
+        { "name": "open-anubis.ink", "via_tunnel": true, "access": false }
+      ]
+    }
+  ],
+
+  "not_managed_here": {
+    "$comment": "Эти домены Cloudflare не обслуживает. Перечислены, чтобы автоматизация их не трогала, а preflight сообщал их состояние.",
+    "direct_to_vps": [
+      {
+        "name": "mql5.ink",
+        "note": "Временная панель. Делегирован на ns1/ns2.hydradns.click, а не напрямую -- зависит от собственного DNS, см. отчёт о готовности."
+      },
+      {
+        "name": "vpn-service-api.pro",
+        "note": "Запасной прямой вход. Делегирован туда же, поэтому независимым запасом пока не является."
+      }
+    ],
+    "own_nameservers": [
+      { "name": "hydradns.click", "note": "Домен собственных серверов имён. Glue ns2 указывает на 127.0.0.1 -- дефект, чинится у регистратора." },
+      { "name": "vpn-service-api.space", "note": "Планировался на собственные серверы имён, сейчас на ns1/ns2.reg.ru." },
+      { "name": "open-anubis.online", "note": "Домен не зарегистрирован (RDAP 404)." }
+    ]
+  },
+
+  "expected_origin_ip": "202.155.8.133"
+}

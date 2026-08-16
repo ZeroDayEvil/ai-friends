@@ -52,7 +52,7 @@ jobs:
         shell: pwsh
         run: |
           $bad = @()
-          foreach ($f in git ls-files '*.ps1') {
+          foreach ($f in git ls-files '*.ps1' '*.psm1') {
             $bytes = [System.IO.File]::ReadAllBytes($f)
             $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
             $nonAscii = $bytes | Where-Object { $_ -gt 127 } | Select-Object -First 1

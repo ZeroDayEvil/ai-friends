@@ -8,6 +8,7 @@
 
 # Скрипты Windows остаются с CRLF.
 *.ps1   text eol=crlf
+*.psm1  text eol=crlf
 *.cmd   text eol=crlf
 *.bat   text eol=crlf
 

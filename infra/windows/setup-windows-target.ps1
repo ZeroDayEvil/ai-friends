@@ -152,6 +152,20 @@ if ($Harden) {
     # вектор подбора.
     net accounts /lockoutthreshold:10 /lockoutduration:15 /lockoutwindow:15 | Out-Null
     'Блокировка учётной записи: 10 попыток, 15 минут.'
+
+    # WinRM закрывается снаружи. Управление идёт по SSH, а WinRM на 5985 -- это
+    # ещё одна дверь, принимающая пароль, причём на облачных образах Windows её
+    # правило нередко открыто для любых адресов. Служба остаётся работать для
+    # локальных задач, недоступным становится только сетевой вход.
+    $winrmRules = Get-NetFirewallRule -ErrorAction SilentlyContinue |
+        Where-Object { $_.Enabled -eq 'True' -and $_.Direction -eq 'Inbound' -and
+            ($_.DisplayName -match 'WinRM|Windows Remote Management') }
+    if ($winrmRules) {
+        $winrmRules | Set-NetFirewallRule -Enabled False
+        "WinRM закрыт снаружи: отключено правил $($winrmRules.Count)."
+    } else {
+        'Открытых правил WinRM не найдено.'
+    }
 }
 
 # ---------------------------------------------------------------------------

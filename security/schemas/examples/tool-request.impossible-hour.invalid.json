@@ -1,9 +1,9 @@
 {
   "schema": "urn:ai-friends:schema:agent:v1:tool-request",
-  "request_id": "d08e9da2-b120-43f3-a475-8091021324ab",
+  "request_id": "d08e9da2-b120-43f3-a475-8091021324c6",
   "trace_id": "b2c3d4e5f6071829b2c3d4e5f6071829",
-  "issued_at": "2026-08-30T10:05:00Z",
-  "deadline": "2026-08-30T10:05:30Z",
+  "issued_at": "2026-08-30T25:05:00Z",
+  "deadline": "2026-08-30T25:05:30Z",
   "tool": "file.read",
   "tool_version": 1,
   "descriptor_hash": "sha256:c3d4e5f607182930c3d4e5f607182930c3d4e5f607182930c3d4e5f607182930",
@@ -51,7 +51,7 @@
         "kind": "service",
         "id": "service:af-orchestrator"
       },
-      "attested_at": "2026-08-30T10:05:00Z",
+      "attested_at": "2026-08-30T25:05:00Z",
       "signature": {
         "alg": "Ed25519",
         "key_id": "orchestrator-provenance-2026q3",

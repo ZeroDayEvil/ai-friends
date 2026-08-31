@@ -79,6 +79,10 @@
     "af_request_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
     "af_args_hash": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
     "af_approval_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "af_binding": {
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/execution_binding",
+      "description": "Право на выполнение целиком. Обязательно для af-exec: токен на вызов и есть исполнительное полномочие, и оно не должно держаться на том, что каждая проверяющая сторона не забыла сверить свой кусок контекста."
+    },
     "af_once": {
       "type": "boolean",
       "description": "Одноразовость. Проверяется хранилищем использованных jti, а не только этим флагом: флаг описывает намерение, отказ в повторе обеспечивает хранилище."
@@ -105,13 +109,13 @@
     {
       "if": { "properties": { "typ": { "const": "af-exec" } }, "required": ["typ"] },
       "then": {
-        "required": ["act", "af_request_id", "af_args_hash", "af_once"],
+        "required": ["act", "af_request_id", "af_args_hash", "af_once", "af_approval_id", "af_binding", "sid"],
         "properties": {
           "af_ttl": { "maximum": 120 },
           "af_once": { "const": true },
           "af_caps": { "minItems": 1, "maxItems": 4 }
         },
-        "description": "Токен на один вызов живёт две минуты, привязан к идентификатору запроса и к хешу нормализованных аргументов. Это делает бессмысленным как повтор, так и подмену аргументов после выдачи."
+        "description": "Токен на один вызов живёт две минуты, привязан к идентификатору запроса и к хешу нормализованных аргументов и несёт подписанное исполнительное полномочие целиком. Это делает бессмысленными и повтор, и подмену аргументов после выдачи, и переиспользование одобрения от другого запроса."
       }
     },
     {
@@ -133,10 +137,16 @@
       }
     },
     {
-      "if": { "properties": { "af_release": { "const": "A" } }, "required": ["af_release"] },
+      "if": {
+        "properties": {
+          "af_release": { "const": "A" },
+          "typ": { "enum": ["af-agent", "af-exec"] }
+        },
+        "required": ["af_release", "typ"]
+      },
       "then": {
-        "if": { "properties": { "typ": { "const": "af-agent" } }, "required": ["typ"] },
-        "then": { "required": ["af_supervisor_sid"] }
+        "required": ["af_supervisor_sid"],
+        "description": "В релизе A наблюдение обязательно для любого исполнительного полномочия, а не только для долгоживущего токена агента. Иначе достаточно получить токен на вызов и дождаться конца смены: сессия наблюдателя закрыта, а право выполнить действие ещё живо. Проверка «сессия наблюдателя активна в момент выполнения» относится к инвариантам времени выполнения и перечислена в security/schemas/README.md."
       }
     }
   ]

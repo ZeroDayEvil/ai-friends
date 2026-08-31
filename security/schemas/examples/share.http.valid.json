@@ -1,24 +1,16 @@
 {
   "schema": "urn:ai-friends:schema:agent:v1:share",
-  "share_id": "share-run-log-77",
+  "share_id": "share-run-77",
   "kind": "http",
-  "root": { "root_id": "transfer", "subpath": "outgoing/run-77" },
+  "root": {
+    "root_id": "transfer",
+    "subpath": "outgoing/share-run-77"
+  },
   "mode": "read_only",
-  "bind": {
-    "interface": "mesh",
-    "address": "10.99.0.4",
-    "port": 8443,
-    "tls": true,
-    "allow_from": ["10.99.0.0/24"]
+  "created_by": {
+    "kind": "human",
+    "id": "human:op-a1b2"
   },
-  "auth": {
-    "required": true,
-    "method": "share_token",
-    "token_ref": "tok-share-77",
-    "token_placement": "authorization_header",
-    "default_password": false
-  },
-  "created_by": { "kind": "human", "id": "human:op-a1b2" },
   "created_at": "2026-08-30T10:10:00Z",
   "expires_at": "2026-08-30T12:10:00Z",
   "ttl_seconds": 7200,
@@ -31,5 +23,33 @@
   },
   "index_listing": false,
   "follow_reparse_points": false,
+  "bind": {
+    "address": "10.99.0.4",
+    "address_class": "mesh",
+    "classification": {
+      "attested_by": {
+        "kind": "service",
+        "id": "service:af-policy"
+      },
+      "attested_at": "2026-08-30T10:10:00Z",
+      "signature": {
+        "alg": "Ed25519",
+        "key_id": "address-classification-2026q3",
+        "value": "c2FtcGxlLXNpZ25hdHVyZS1ub3QtYS1yZWFsLWtleS1jbGFzc2lmaWVyLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ"
+      }
+    },
+    "port": 8443,
+    "tls": true,
+    "allow_from": [
+      "10.99.0.0/24"
+    ]
+  },
+  "auth": {
+    "required": true,
+    "method": "share_token",
+    "token_ref": "tok-share-77",
+    "token_placement": "authorization_header",
+    "default_password": false
+  },
   "revoked": false
 }

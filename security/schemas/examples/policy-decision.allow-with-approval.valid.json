@@ -4,13 +4,31 @@
   "request_id": "6f1d2c3b-4a59-4b8c-9d0e-1f2a3b4c5d6e",
   "trace_id": "a1b2c3d4e5f60718a1b2c3d4e5f60718",
   "evaluated_at": "2026-08-30T10:00:00Z",
-  "evaluator": { "kind": "service", "id": "service:af-policy" },
-  "policy_version": "3.4.1+a1b2c3d4e5f6",
+  "evaluator": {
+    "kind": "service",
+    "id": "service:af-policy"
+  },
+  "policy_version": {
+    "version": "3.4.1",
+    "digest": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "signature": {
+      "alg": "Ed25519",
+      "key_id": "policy-signing-2026q3",
+      "value": "c2FtcGxlLXNpZ25hdHVyZS1ub3QtYS1yZWFsLWtleS1wb2xpY3ktLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ"
+    }
+  },
   "decision": "allow_with_approval",
   "reasons": [
-    { "code": "approval_required", "detail": "Выполнение команды на цели подтверждается оператором.", "rule_id": "exec-requires-approval" }
+    {
+      "code": "approval_required",
+      "detail": "Выполнение команды на цели подтверждается оператором.",
+      "rule_id": "exec-requires-approval"
+    }
   ],
-  "matched_rules": ["exec-requires-approval", "machine-grant-lab"],
+  "matched_rules": [
+    "exec-requires-approval",
+    "machine-grant-lab"
+  ],
   "effective_constraints": {
     "deadline_seconds": 60,
     "max_output_bytes": 65536,
@@ -19,10 +37,19 @@
     "allow_untrusted_provenance": false
   },
   "obligations": [
-    { "type": "record_session" },
-    { "type": "limit_output_bytes", "limit": 65536 },
-    { "type": "single_use_token" },
-    { "type": "notify_approver" }
+    {
+      "type": "record_session"
+    },
+    {
+      "type": "limit_output_bytes",
+      "limit": 65536
+    },
+    {
+      "type": "single_use_token"
+    },
+    {
+      "type": "notify_approver"
+    }
   ],
   "ttl_seconds": 120,
   "risk": "high",

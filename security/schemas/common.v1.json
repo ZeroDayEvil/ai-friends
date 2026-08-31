@@ -36,18 +36,63 @@
       "pattern": "^(human|agent|device|service):[a-z0-9][a-z0-9._~-]{1,62}$",
       "maxLength": 71
     },
-    "principal_kind": {
-      "enum": ["human", "agent", "device", "service"]
-    },
     "principal_ref": {
       "type": "object",
-      "description": "Ссылка на субъекта. Вид дублируется отдельным полем, чтобы получатель не разбирал строку идентификатора ради маршрутизации решения.",
-      "properties": {
-        "kind": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_kind" },
-        "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" }
-      },
-      "required": ["kind", "id"],
-      "additionalProperties": false
+      "description": "Ссылка на субъекта. Вид дублируется отдельным полем, чтобы получатель не разбирал строку идентификатора ради маршрутизации решения, и именно поэтому вид обязан совпадать с префиксом идентификатора. Раздельные поля без связи давали бы запись вида {kind: human, id: agent:...}: получатель, маршрутизирующий по kind, считает её человеком, а получатель, сверяющий id со списком, — агентом. Расхождение здесь означает разные ответы на вопрос «кто это» у разных частей системы.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "human" },
+            "id": {
+              "allOf": [
+                { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" },
+                { "type": "string", "pattern": "^human:" }
+              ]
+            }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "agent" },
+            "id": {
+              "allOf": [
+                { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" },
+                { "type": "string", "pattern": "^agent:" }
+              ]
+            }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "device" },
+            "id": {
+              "allOf": [
+                { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" },
+                { "type": "string", "pattern": "^device:" }
+              ]
+            }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "service" },
+            "id": {
+              "allOf": [
+                { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" },
+                { "type": "string", "pattern": "^service:" }
+              ]
+            }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        }
+      ]
     },
     "actor_chain": {
       "type": "array",
@@ -106,14 +151,15 @@
     },
     "relpath": {
       "type": "string",
-      "description": "Путь относительно зарегистрированного корня. Абсолютные пути, UNC, пространство устройств, диск-относительные пути, обход вверх, зарезервированные имена устройств и альтернативные потоки данных запрещены на уровне схемы, а не только проверкой в коде: строка, дошедшая до открытия файла, уже не должна нуждаться в разборе. Пустая строка означает сам корень.",
+      "description": "Путь относительно зарегистрированного корня. Абсолютные пути, UNC, пространство устройств, диск-относительные пути, обход вверх, зарезервированные имена устройств и альтернативные потоки данных запрещены на уровне схемы, а не только проверкой в коде: строка, дошедшая до открытия файла, уже не должна нуждаться в разборе. Пустая строка означает сам корень. Надстрочные цифры в именах COM и LPT перечислены не для полноты: Windows разбирает COM¹, COM² и COM³ как те же устройства, что COM1, COM2 и COM3, поэтому проверка по диапазону [1-9] пропускает рабочее имя устройства.",
       "maxLength": 1024,
       "allOf": [
         { "type": "string", "pattern": "^(|[^/\\\\:*?\"<>|\\u0000-\\u001f]+(/[^/\\\\:*?\"<>|\\u0000-\\u001f]+)*)$" },
         { "not": { "pattern": "(^|/)\\.\\.(/|$)" } },
         { "not": { "pattern": "(^|/)\\.(/|$)" } },
         { "not": { "pattern": "[ .](/|$)" } },
-        { "not": { "pattern": "(^|/)([cC][oO][nN]|[pP][rR][nN]|[aA][uU][xX]|[nN][uU][lL]|[cC][oO][mM][1-9]|[lL][pP][tT][1-9])(\\.|/|$)" } }
+        { "not": { "pattern": "(^|/)([cC][oO][nN]|[pP][rR][nN]|[aA][uU][xX]|[nN][uU][lL]|[cC][oO][mM][1-9\u00b9\u00b2\u00b3]|[lL][pP][tT][1-9\u00b9\u00b2\u00b3])(\\.|/|$)" } },
+        { "not": { "pattern": "(^|/)[cC][oO][nN]([iI][nN]|[oO][uU][tT])\\$(\\.|/|$)" } }
       ]
     },
     "port": {
@@ -391,9 +437,92 @@
       "additionalProperties": false
     },
     "policy_version": {
-      "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\+[0-9a-f]{12}$",
-      "description": "Версия политики вместе с хешем её содержимого. Решение без указания версии невоспроизводимо: через месяц нельзя ответить, почему оно было именно таким."
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/policy_ref",
+      "description": "Историческое имя для policy_ref. Оставлено ссылкой, чтобы имя поля в потребляющих схемах не менялось вместе с формой значения."
+    },
+    "policy_ref": {
+      "type": "object",
+      "description": "Версия политики вместе с полным содержательным хешем и подписью службы политики. Решение без указания версии невоспроизводимо: через месяц нельзя ответить, почему оно было именно таким. Хеш берётся полный: усечённый до 48 бит суффикс подбирается по парадоксу дней рождения примерно за 2^24 попыток, то есть за минуты на обычной машине, и тогда «версия 3.4.1 с таким-то содержимым» перестаёт однозначно указывать на содержимое. Подпись нужна потому, что сам по себе хеш подтверждает только целостность записи, но не то, что этот текст политики когда-либо был выпущен.",
+      "properties": {
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "digest": {
+          "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256",
+          "description": "SHA-256 канонизированного текста политики по правилам afcanon/1."
+        },
+        "signature": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/signature" }
+      },
+      "required": ["version", "digest", "signature"],
+      "additionalProperties": false
+    },
+    "attestation": {
+      "type": "object",
+      "description": "Утверждение службы о факте, который вызывающая сторона заявить не вправе. Нужно везде, где значение поля определяет исход проверки: происхождение данных, класс сетевого адреса, класс адреса привязки. Без подписи такое поле — это просьба к вызывающему сказать правду о себе.",
+      "properties": {
+        "attested_by": {
+          "allOf": [
+            { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+            { "properties": { "kind": { "const": "service" } }, "required": ["kind"] }
+          ]
+        },
+        "attested_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+        "signature": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/signature" }
+      },
+      "required": ["attested_by", "attested_at", "signature"],
+      "additionalProperties": false
+    },
+    "execution_binding": {
+      "type": "object",
+      "description": "Единый подписанный объект, связывающий право на выполнение со всем, что определяет это выполнение. Разнесённые по отдельным полям привязки проверяются по отдельности, и достаточно одной пропущенной сверки, чтобы одобрение на безобидный вызов стало правом на опасный. Здесь связь одна и неделимая: подпись покрывает весь набор сразу, поэтому подмена любого элемента ломает проверку подписи, а не отдельную ветку кода.",
+      "properties": {
+        "request_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+        "approval_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+        "approval_nonce": { "type": "string", "pattern": "^[A-Za-z0-9_-]{22}$" },
+        "policy": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/policy_ref" },
+        "actor": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+        "session_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+        "target": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/resource_ref" },
+        "tool": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*){1,3}$", "maxLength": 64 },
+        "tool_version": { "type": "integer", "minimum": 1 },
+        "descriptor_hash": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
+        "args_hash": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
+        "canon": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/canon" },
+        "single_use": {
+          "const": true,
+          "description": "Значения false не существует. Многоразовое право на выполнение опасного действия — это отсутствие привязки к нонсу одобрения."
+        },
+        "signature": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/signature" }
+      },
+      "required": [
+        "request_id",
+        "approval_id",
+        "approval_nonce",
+        "policy",
+        "actor",
+        "session_id",
+        "target",
+        "tool",
+        "tool_version",
+        "descriptor_hash",
+        "args_hash",
+        "canon",
+        "single_use",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "ip_class": {
+      "enum": ["public", "loopback", "link_local", "private", "mesh", "control_plane", "metadata"],
+      "description": "Класс сетевого адреса. Определяется разбором самого адреса на стороне службы, а не заявляется вызывающим: заявленный класс — это просьба поверить, что 169.254.169.254 является публичным адресом."
+    },
+    "classified_address": {
+      "type": "object",
+      "description": "Адрес вместе с его классом и подписью классифицирующей службы.",
+      "properties": {
+        "address": { "type": "string", "minLength": 3, "maxLength": 45 },
+        "class": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/ip_class" }
+      },
+      "required": ["address", "class"],
+      "additionalProperties": false
     },
     "trace_id": {
       "type": "string",

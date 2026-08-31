@@ -1,32 +1,19 @@
 {
   "iss": "urn:ai-friends:issuer:control-plane",
   "sub": "agent:runner-7f3a",
-  "aud": [
-    "af-executor"
-  ],
+  "aud": ["af-executor"],
   "iat": 1787000100,
   "nbf": 1787000100,
   "exp": 1787000220,
-  "jti": "cf7d8c91-a01f-42e2-9364-7f8091021324",
+  "jti": "cf7d8c91-a01f-42e2-9364-7f8091021327",
   "typ": "af-exec",
   "act": [
-    {
-      "kind": "agent",
-      "id": "agent:runner-7f3a"
-    },
-    {
-      "kind": "human",
-      "id": "human:op-a1b2"
-    }
+    { "kind": "agent", "id": "agent:runner-7f3a" },
+    { "kind": "human", "id": "human:op-a1b2" }
   ],
   "sid": "sess-9f2b",
   "af_ttl": 120,
-  "af_caps": [
-    {
-      "capability_id": "cap:exec-service-restart",
-      "action": "command.exec"
-    }
-  ],
+  "af_caps": [{ "capability_id": "cap:exec-service-restart", "action": "command.exec" }],
   "af_policy": {
     "version": "3.4.1",
     "digest": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
@@ -37,12 +24,13 @@
     }
   },
   "af_release": "A",
+  "af_supervisor_sid": "sess-op-77c1",
   "af_request_id": "6f1d2c3b-4a59-4b8c-9d0e-1f2a3b4c5d6e",
   "af_args_hash": "sha256:a1b2c3d4e5f60718a1b2c3d4e5f60718a1b2c3d4e5f60718a1b2c3d4e5f60718",
   "af_approval_id": "8b3f4e5d-6c7b-4dae-9f20-3b4c5d6e7f80",
   "af_once": true,
   "af_binding": {
-    "request_id": "6f1d2c3b-4a59-4b8c-9d0e-1f2a3b4c5d6e",
+    "request_id": "aaaa1111-4a59-4b8c-9d0e-1f2a3b4c5d6e",
     "approval_id": "8b3f4e5d-6c7b-4dae-9f20-3b4c5d6e7f80",
     "approval_nonce": "bm9uY2Utc2FtcGxlLTAxNg",
     "policy": {
@@ -54,16 +42,9 @@
         "value": "c2FtcGxlLXNpZ25hdHVyZS1ub3QtYS1yZWFsLWtleS1wb2xpY3ktLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ"
       }
     },
-    "actor": {
-      "kind": "agent",
-      "id": "agent:runner-7f3a"
-    },
+    "actor": { "kind": "agent", "id": "agent:runner-7f3a" },
     "session_id": "sess-9f2b",
-    "target": {
-      "kind": "machine_endpoint",
-      "id": "win-lab-01",
-      "protocol": "ssh"
-    },
+    "target": { "kind": "machine_endpoint", "id": "win-lab-01", "protocol": "ssh" },
     "tool": "command.exec",
     "tool_version": 1,
     "descriptor_hash": "sha256:b2c3d4e5f6071829b2c3d4e5f6071829b2c3d4e5f6071829b2c3d4e5f6071829",
@@ -75,10 +56,5 @@
       "key_id": "exec-binding-2026q3",
       "value": "c2FtcGxlLXNpZ25hdHVyZS1ub3QtYS1yZWFsLWtleS1vcmNoZXN0cmF0b3ItLS0tLS0tLS0tLS0tLS0tLS0tLQ"
     }
-  },
-  "af_supervisor_sid": "sess-op-77c1",
-  "af_device": "device:win-lab-01",
-  "cnf": {
-    "x5t#S256": "ZGV2aWNlLWNlcnQtdGh1bWJwcmludC1zYW1wbGUtMDE"
   }
 }

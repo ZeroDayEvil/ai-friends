@@ -31,7 +31,7 @@
       "type": "integer",
       "minimum": 60,
       "maximum": 86400,
-      "description": "Публикация без срока превращается в постоянную дверь, о которой через месяц никто не помнит. Сутки — верхний предел; продление означает создание новой публикации с новой записью в журнале."
+      "description": "Публикация без срока превращается в постоянную дверь, о которой через месяц никто не помнит. Сутки — верхний предел; продление означает создание новой публикации с новой записью в журнале. Согласованность с парой created_at и expires_at проверяется инвариантом share-expiry-matches-ttl: без этой сверки достаточно объявить ttl_seconds равным 60 и поставить expires_at через год, и запись выглядит короткоживущей, оставаясь бессрочной."
     },
     "approval_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
     "limits": { "$ref": "#/$defs/limits" },
@@ -66,13 +66,6 @@
   "additionalProperties": false,
   "allOf": [
     {
-      "if": { "properties": { "bind": { "properties": { "interface": { "not": { "const": "loopback" } } }, "required": ["interface"] } }, "required": ["bind"] },
-      "then": {
-        "properties": { "bind": { "properties": { "tls": { "const": true } }, "required": ["tls"] } },
-        "description": "За пределами петлевого интерфейса открытого текста не бывает: токен публикации в открытом HTTP перехватывается на любом транзитном участке."
-      }
-    },
-    {
       "if": { "properties": { "mode": { "const": "read_write" } }, "required": ["mode"] },
       "then": {
         "properties": {
@@ -89,12 +82,14 @@
   "$defs": {
     "bind": {
       "type": "object",
+      "description": "Где слушает публикация. Прежняя форма позволяла вызывающему объявить interface: loopback рядом с публичным адресом, и тогда правило «за пределами петлевого интерфейса только TLS» не срабатывало: оно смотрело на слово, а слушал сокет адрес. Класс адреса теперь вычисляет служба разбором самого адреса и подтверждает подписью, а требование TLS привязано к адресу, а не к названию.",
       "properties": {
-        "interface": {
-          "enum": ["loopback", "mesh", "device"],
-          "description": "Множества «все интерфейсы» здесь нет. mesh — адрес в туннельной сети, device — конкретный интерфейс узла, выбранный явно."
-        },
         "address": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/bind_address" },
+        "address_class": {
+          "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/ip_class",
+          "description": "Определяется службой. Совпадение с фактическим адресом проверяется инвариантом share-address-class-matches."
+        },
+        "classification": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/attestation" },
         "port": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/port" },
         "tls": { "type": "boolean" },
         "allow_from": {
@@ -103,11 +98,34 @@
           "minItems": 1,
           "maxItems": 16,
           "uniqueItems": true,
-          "description": "Список источников. Присутствие обязательно: даже за петлевым интерфейсом полезно ограничить круг, а за пределами узла это единственный дешёвый рубеж, работающий до аутентификации."
+          "description": "Список источников. Присутствие обязательно: даже за петлевым интерфейсом полезно ограничить круг, а за его пределами это единственный дешёвый рубеж, работающий до аутентификации."
         }
       },
-      "required": ["interface", "address", "port", "tls", "allow_from"],
-      "additionalProperties": false
+      "required": ["address", "address_class", "classification", "port", "tls", "allow_from"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "not": {
+              "properties": { "address": { "pattern": "^(127\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}|::1|\\[::1\\])$" } },
+              "required": ["address"]
+            }
+          },
+          "then": {
+            "properties": { "tls": { "const": true } },
+            "description": "Условие смотрит на сам адрес, а не на его объявленный класс. Токен публикации в открытом HTTP перехватывается на любом транзитном участке, и короткий срок этого не меняет: воспользоваться им нужно один раз."
+          }
+        },
+        {
+          "if": {
+            "properties": { "address_class": { "const": "loopback" } },
+            "required": ["address_class"]
+          },
+          "then": {
+            "properties": { "address": { "pattern": "^(127\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}|::1|\\[::1\\])$" } }
+          }
+        }
+      ]
     },
     "auth": {
       "type": "object",

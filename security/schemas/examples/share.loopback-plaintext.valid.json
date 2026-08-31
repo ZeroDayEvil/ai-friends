@@ -1,53 +1,54 @@
 {
   "schema": "urn:ai-friends:schema:agent:v1:share",
-  "share_id": "share-ftp-legacy",
-  "kind": "ftp",
+  "share_id": "share-loop-77",
+  "kind": "http",
   "root": {
     "root_id": "transfer",
-    "subpath": "outgoing/share-ftp-legacy"
+    "subpath": "outgoing/share-loop-77"
   },
-  "mode": "read_write",
+  "mode": "read_only",
   "created_by": {
     "kind": "human",
     "id": "human:op-a1b2"
   },
-  "created_at": "2026-08-30T10:30:00Z",
-  "expires_at": "2026-08-31T10:30:00Z",
-  "ttl_seconds": 86400,
-  "approval_id": "f2a0bfc4-d342-4515-8697-021324ab5c6f",
+  "created_at": "2026-08-30T10:12:00Z",
+  "expires_at": "2026-08-30T11:12:00Z",
+  "ttl_seconds": 3600,
+  "approval_id": "f2a0bfc4-d342-4515-8697-021324ab5c72",
   "limits": {
     "max_download_bytes": 104857600,
     "max_connections": 4,
     "content_disposition": "attachment",
     "sniff_protection": true
   },
-  "index_listing": true,
+  "index_listing": false,
   "follow_reparse_points": false,
   "bind": {
-    "address": "10.99.0.4",
-    "address_class": "mesh",
+    "address": "127.0.0.1",
+    "address_class": "loopback",
     "classification": {
       "attested_by": {
         "kind": "service",
         "id": "service:af-policy"
       },
-      "attested_at": "2026-08-30T10:30:00Z",
+      "attested_at": "2026-08-30T10:12:00Z",
       "signature": {
         "alg": "Ed25519",
         "key_id": "address-classification-2026q3",
         "value": "c2FtcGxlLXNpZ25hdHVyZS1ub3QtYS1yZWFsLWtleS1jbGFzc2lmaWVyLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ"
       }
     },
-    "port": 2121,
+    "port": 8081,
     "tls": false,
     "allow_from": [
-      "10.99.0.0/24"
+      "127.0.0.1/32"
     ]
   },
   "auth": {
-    "required": false,
+    "required": true,
     "method": "share_token",
+    "token_ref": "tok-share-loop",
     "token_placement": "authorization_header",
-    "default_password": true
+    "default_password": false
   }
 }

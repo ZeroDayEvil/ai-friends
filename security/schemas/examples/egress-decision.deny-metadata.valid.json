@@ -3,13 +3,49 @@
   "decision_id": "d08e9da2-b120-43f3-a475-8091021324b0",
   "trace_id": "b2c3d4e5f6071829b2c3d4e5f6071829",
   "decided_at": "2026-08-30T10:40:00Z",
-  "actor": { "kind": "agent", "id": "agent:browser-2c8d" },
+  "actor": {
+    "kind": "agent",
+    "id": "agent:browser-2c8d"
+  },
   "origin": "browser_worker",
-  "requested": { "host": "metadata.internal.example", "port": 80, "scheme": "https" },
-  "resolved_ips": ["169.254.169.254"],
+  "requested": {
+    "host": "metadata.internal.example",
+    "port": 80,
+    "scheme": "https"
+  },
+  "resolved_ips": [
+    {
+      "address": "169.254.169.254",
+      "class": "metadata"
+    }
+  ],
+  "classification": {
+    "attested_by": {
+      "kind": "service",
+      "id": "service:af-policy"
+    },
+    "attested_at": "2026-08-30T10:40:00Z",
+    "signature": {
+      "alg": "Ed25519",
+      "key_id": "address-classification-2026q3",
+      "value": "c2FtcGxlLXNpZ25hdHVyZS1ub3QtYS1yZWFsLWtleS1jbGFzc2lmaWVyLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ"
+    }
+  },
   "decision": "deny",
-  "reason": { "code": "egress_blocked", "detail": "Адрес назначения в служебном диапазоне.", "rule_id": "egress-deny-metadata" },
-  "policy_version": "3.4.1+a1b2c3d4e5f6",
+  "reason": {
+    "code": "egress_blocked",
+    "detail": "Адрес назначения в служебном диапазоне.",
+    "rule_id": "egress-deny-metadata"
+  },
+  "policy_version": {
+    "version": "3.4.1",
+    "digest": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "signature": {
+      "alg": "Ed25519",
+      "key_id": "policy-signing-2026q3",
+      "value": "c2FtcGxlLXNpZ25hdHVyZS1ub3QtYS1yZWFsLWtleS1wb2xpY3ktLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ"
+    }
+  },
   "blocked_range": "metadata",
   "via_proxy": true,
   "audit_event_id": "9c4a5f6e-7d8c-4ebf-a031-4c5d6e7f8094"

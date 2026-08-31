@@ -28,6 +28,10 @@
       "description": "Роль не даёт полномочий сама по себе: она лишь входит в правило политики. Полномочие всегда выражается capability, иначе появляется второй, скрытый источник прав."
     },
     "os_account": { "$ref": "#/$defs/os_account" },
+    "service_role": {
+      "enum": ["policy", "audit", "broker", "executor", "desktop", "browser"],
+      "description": "Роль служебного субъекта. Задаёт, куда этой учётной записи разрешена запись и какие привилегии обязаны быть сняты. Без роли служебная запись описывается свободно, и «отдельная учётная запись для исполнителя» превращается в учётную запись с правом писать в политику."
+    },
     "enrollment": { "$ref": "#/$defs/enrollment" },
     "agent_profile": { "$ref": "#/$defs/agent_profile" }
   },
@@ -38,7 +42,7 @@
       "if": { "properties": { "principal": { "properties": { "kind": { "const": "human" } }, "required": ["kind"] } }, "required": ["principal"] },
       "then": {
         "properties": { "authentication": { "properties": { "method": { "enum": ["cf-access", "local-password"] } } } },
-        "not": { "anyOf": [{ "required": ["on_behalf_of"] }, { "required": ["agent_profile"] }, { "required": ["enrollment"] }, { "required": ["os_account"] }] }
+        "not": { "anyOf": [{ "required": ["on_behalf_of"] }, { "required": ["agent_profile"] }, { "required": ["enrollment"] }, { "required": ["os_account"] }, { "required": ["service_role"] }] }
       }
     },
     {
@@ -61,8 +65,93 @@
     {
       "if": { "properties": { "principal": { "properties": { "kind": { "const": "service" } }, "required": ["kind"] } }, "required": ["principal"] },
       "then": {
-        "required": ["os_account"],
+        "required": ["os_account", "service_role"],
         "properties": { "authentication": { "properties": { "method": { "enum": ["mtls", "os-account"] } } } }
+      }
+    },
+    {
+      "if": { "required": ["service_role"], "properties": { "service_role": { "const": "executor" } } },
+      "then": {
+        "properties": {
+          "os_account": {
+            "properties": {
+              "can_write": {
+                "items": { "enum": ["work_root", "quarantine_root"] },
+                "description": "Исполнителю доступны на запись только рабочий и карантинный корни. Перечисление ограничено здесь, а не только описано в документе: возможность добавить в этот список policy, audit, credentials, app_binaries или startup означает, что все остальные ограничения действуют до первого перезапуска."
+              },
+              "denied_privileges": {
+                "allOf": [
+                  { "contains": { "const": "SeDebugPrivilege" } },
+                  { "contains": { "const": "SeBackupPrivilege" } },
+                  { "contains": { "const": "SeRestorePrivilege" } },
+                  { "contains": { "const": "SeTakeOwnershipPrivilege" } },
+                  { "contains": { "const": "SeImpersonatePrivilege" } },
+                  { "contains": { "const": "SeAssignPrimaryTokenPrivilege" } },
+                  { "contains": { "const": "SeLoadDriverPrivilege" } },
+                  { "contains": { "const": "SeSecurityPrivilege" } },
+                  { "contains": { "const": "SeCreateSymbolicLinkPrivilege" } }
+                ],
+                "description": "Каждая из этих привилегий обходит удержание в корне, списки доступа или изоляцию процессов, то есть отменяет ровно тот рубеж, ради которого исполнитель вынесен в отдельную учётную запись. Перечислять их как рекомендацию бессмысленно."
+              }
+            },
+            "required": ["denied_privileges"]
+          }
+        }
+      }
+    },
+    {
+      "if": { "required": ["service_role"], "properties": { "service_role": { "const": "policy" } } },
+      "then": {
+        "properties": {
+          "os_account": { "properties": { "can_write": { "items": { "enum": ["policy", "config"] } } } }
+        }
+      }
+    },
+    {
+      "if": { "required": ["service_role"], "properties": { "service_role": { "const": "audit" } } },
+      "then": {
+        "properties": {
+          "os_account": { "properties": { "can_write": { "items": { "const": "audit" } } } }
+        }
+      }
+    },
+    {
+      "if": { "required": ["service_role"], "properties": { "service_role": { "const": "broker" } } },
+      "then": {
+        "properties": {
+          "os_account": {
+            "properties": {
+              "can_write": { "items": { "const": "credentials" } },
+              "denied_privileges": {
+                "allOf": [
+                  { "contains": { "const": "SeDebugPrivilege" } },
+                  { "contains": { "const": "SeImpersonatePrivilege" } }
+                ]
+              }
+            },
+            "required": ["denied_privileges"]
+          }
+        }
+      }
+    },
+    {
+      "if": { "required": ["service_role"], "properties": { "service_role": { "enum": ["desktop", "browser"] } } },
+      "then": {
+        "properties": {
+          "os_account": {
+            "properties": {
+              "can_write": { "items": { "enum": ["work_root", "quarantine_root"] } },
+              "denied_privileges": {
+                "allOf": [
+                  { "contains": { "const": "SeDebugPrivilege" } },
+                  { "contains": { "const": "SeImpersonatePrivilege" } },
+                  { "contains": { "const": "SeCreateSymbolicLinkPrivilege" } }
+                ]
+              }
+            },
+            "required": ["denied_privileges"]
+          }
+        }
       }
     }
   ],
@@ -183,7 +272,16 @@
         }
       },
       "required": ["runtime", "max_session_seconds", "supervision", "release", "accepts_provenance"],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "release": { "const": "A" } }, "required": ["release"] },
+          "then": {
+            "properties": { "supervision": { "const": "supervised" } },
+            "description": "Профиль агента с релизом A и разрешённой автономной работой невыразим. Иначе автономность включается редактированием записи субъекта, минуя и полномочия, и описания инструментов, где то же ограничение уже стоит."
+          }
+        }
+      ]
     }
   }
 }

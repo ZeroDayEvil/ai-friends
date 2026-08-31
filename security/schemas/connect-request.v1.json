@@ -21,17 +21,9 @@
       "description": "Ссылка непрозрачна и неперечислима: агент видит только те профили, на которые у него есть полномочие, и видит идентификаторы, а не поля."
     },
     "target": {
-      "description": "Цель — всегда запись реестра. Литеральный адрес в контракте невыразим: именно возможность прислать произвольный адрес превращает узел в универсальный прокси внутрь сети.",
+      "description": "Цель — всегда запись реестра, и протокол объявляется вместе с ней, ровно один раз. Прежняя форма с отдельным полем protocol рядом с target.protocol позволяла прислать пару «конечная точка RDP» и «протокол ssh»: одна проверка берёт протокол из цели и разрешает, другая открывает соединение по внешнему полю. Одно поле нельзя рассогласовать. Литеральный адрес невыразим: именно возможность прислать произвольный адрес превращает узел в универсальный прокси внутрь сети.",
       "type": "object",
       "oneOf": [
-        {
-          "properties": {
-            "kind": { "const": "machine" },
-            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
-          },
-          "required": ["kind", "id"],
-          "additionalProperties": false
-        },
         {
           "properties": {
             "kind": { "const": "machine_endpoint" },
@@ -44,15 +36,19 @@
         {
           "properties": {
             "kind": { "const": "bookmark" },
-            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+            "protocol": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/protocol" }
           },
-          "required": ["kind", "id"],
+          "required": ["kind", "id", "protocol"],
           "additionalProperties": false,
-          "description": "Закладка задаёт способ подключения, но не является источником прав: адрес из неё сверяется с реестром машин и с полномочием, а не принимается на веру."
+          "description": "Закладка задаёт способ подключения, но не является источником прав: и адрес, и протокол из неё сверяются с реестром машин и с полномочием, а не принимаются на веру."
         }
       ]
     },
-    "protocol": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/protocol" },
+    "authorization": {
+      "$ref": "#/$defs/authorization",
+      "description": "Разрешение брокера на это подключение целиком. Обязательно: брокер держит учётные данные, поэтому решение «кому, к чему и по какому протоколу их применить» не должно собираться из независимо присылаемых полей."
+    },
     "hop_via": {
       "type": "array",
       "items": {
@@ -65,7 +61,7 @@
         "additionalProperties": false
       },
       "maxItems": 2,
-      "description": "Промежуточные узлы. Каждый требует собственного полномочия: право дойти до цели через машину — это право работать и на этой машине тоже."
+      "description": "Промежуточные узлы. Поле обязательно, пустой массив означает прямое подключение: необязательное поле здесь означало бы, что запрос без него и запрос с пустым списком сравниваются с привязкой по-разному. Каждый узел требует собственного полномочия: право дойти до цели через машину — это право работать и на этой машине тоже."
     },
     "purpose": { "type": "string", "minLength": 4, "maxLength": 256 },
     "actor": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
@@ -87,7 +83,8 @@
     "deadline",
     "profile_ref",
     "target",
-    "protocol",
+    "authorization",
+    "hop_via",
     "purpose",
     "actor",
     "act",
@@ -97,6 +94,54 @@
   ],
   "additionalProperties": false,
   "$defs": {
+    "authorization": {
+      "type": "object",
+      "description": "Атомарная привязка: профиль учётных данных, зарегистрированная конечная точка, протокол, промежуточные узлы, действующее лицо и полномочие на выполнение — всё под одной подписью службы политики. Разнесённые привязки проверяются по одной, и пропуск любой сверки даёт применение чужих учётных данных к чужой цели. Совпадение полей привязки с полями запроса проверяется инвариантом времени выполнения connect-authorization-binds-request.",
+      "properties": {
+        "profile_ref": {
+          "type": "object",
+          "properties": {
+            "kind": { "const": "credential_profile" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        "target": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/resource_ref" },
+        "protocol": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/protocol" },
+        "hop_via": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": { "const": "machine" },
+              "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+            },
+            "required": ["kind", "id"],
+            "additionalProperties": false
+          },
+          "maxItems": 2
+        },
+        "actor": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+        "request_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+        "approval_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+        "policy": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/policy_ref" },
+        "expires_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+        "signature": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/signature" }
+      },
+      "required": [
+        "profile_ref",
+        "target",
+        "protocol",
+        "hop_via",
+        "actor",
+        "request_id",
+        "policy",
+        "expires_at",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
     "result": {
       "type": "object",
       "title": "Ответ брокера",

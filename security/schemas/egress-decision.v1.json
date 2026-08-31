@@ -29,11 +29,15 @@
     },
     "resolved_ips": {
       "type": "array",
-      "items": { "type": "string", "minLength": 3, "maxLength": 45 },
+      "items": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/classified_address" },
       "minItems": 0,
       "maxItems": 16,
-      "uniqueItems": true,
-      "description": "Адреса, полученные при разрешении имени в момент решения. Соединение устанавливается ровно к одному из них, повторное разрешение имени перед подключением запрещено."
+      "description": "Адреса, полученные при разрешении имени в момент решения, каждый со своим классом. Класс определяет служба разбором адреса, а не вызывающий: список голых строк заставлял бы каждого потребителя решения самостоятельно классифицировать адрес, и достаточно одного места, где этого не сделали. Соединение устанавливается ровно к одному из перечисленных адресов, повторное разрешение имени перед подключением запрещено. Совпадение класса с самим адресом проверяется инвариантом egress-address-class-matches."
+    },
+    "classification": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/attestation" },
+    "resource_exception": {
+      "$ref": "#/$defs/resource_exception",
+      "description": "Единственный способ разрешить соединение с адресом непубличного класса. Общего разрешения, которое молча пропускает служебный или частный адрес, не существует."
     },
     "decision": { "enum": ["allow", "deny"] },
     "reason": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/reason" },
@@ -51,8 +55,8 @@
     "byte_budget": { "type": "integer", "minimum": 0, "maximum": 10737418240 },
     "audit_event_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
     "blocked_range": {
-      "enum": ["loopback", "link_local", "private", "mesh", "control_plane", "metadata"],
-      "description": "Какой из запрещённых диапазонов сработал. Выделено отдельным полем, потому что именно это отличает случайную опечатку от попытки достучаться до плоскости управления или до службы метаданных облака изнутри браузерного работника."
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/ip_class",
+      "description": "Какой класс адреса привёл к отказу. Выделено отдельным полем, потому что именно это отличает случайную опечатку от попытки достучаться до плоскости управления или до службы метаданных облака изнутри браузерного работника."
     }
   },
   "required": [
@@ -69,16 +73,71 @@
     "audit_event_id"
   ],
   "additionalProperties": false,
+  "$defs": {
+    "resource_exception": {
+      "type": "object",
+      "description": "Узкое исключение под конкретный ресурс. Не «разрешить частные адреса», а «разрешить вот этот адрес и порт вот для этой цели, до вот этого момента».",
+      "properties": {
+        "rule_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+        "permitted_class": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/ip_class" },
+        "permitted_address": { "type": "string", "minLength": 3, "maxLength": 45 },
+        "permitted_port": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/port" },
+        "target": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/resource_ref" },
+        "approval_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+        "expires_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+        "signature": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/signature" }
+      },
+      "required": [
+        "rule_id",
+        "permitted_class",
+        "permitted_address",
+        "permitted_port",
+        "target",
+        "approval_id",
+        "expires_at",
+        "signature"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": { "permitted_class": { "not": { "const": "metadata" } } },
+          "description": "Служба метаданных облака не является ресурсом, к которому у автоматизации бывает законная надобность: обращение к ней — это запрос учётных данных виртуальной машины. Исключение под неё невыразимо."
+        }
+      ]
+    }
+  },
   "allOf": [
     {
       "if": { "properties": { "decision": { "const": "allow" } }, "required": ["decision"] },
       "then": {
-        "required": ["destination_group", "resolved_ips", "rule_id", "pin_ips", "via_proxy", "ttl_seconds"],
+        "required": ["destination_group", "resolved_ips", "rule_id", "pin_ips", "via_proxy", "ttl_seconds", "classification"],
         "properties": {
           "pin_ips": { "const": true },
+          "via_proxy": {
+            "const": true,
+            "description": "Разрешение без посредника невыразимо. Прямой выход остаётся только у самого прокси: без него закрепление адресов держится на добросовестности того же процесса, который и устанавливает соединение."
+          },
           "resolved_ips": { "minItems": 1 }
         },
-        "description": "Разрешение без группы назначений и без закреплённых адресов невыразимо. Это и есть защита от подмены адреса между проверкой и соединением."
+        "description": "Разрешение без группы назначений, без закреплённых и классифицированных адресов и без прокси невыразимо. Это и есть защита от подмены адреса между проверкой и соединением."
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision": { "const": "allow" },
+          "resolved_ips": {
+            "contains": {
+              "properties": { "class": { "not": { "const": "public" } } },
+              "required": ["class"]
+            }
+          }
+        },
+        "required": ["decision", "resolved_ips"]
+      },
+      "then": {
+        "required": ["resource_exception"],
+        "description": "Разрешение, среди адресов которого есть непубличный, требует явного узкого исключения под конкретный ресурс. Общее разрешение к группе назначений не пропускает служебный, петлевой, частный или относящийся к плоскости управления адрес: именно так имя, ведущее наружу, превращается в обращение внутрь."
       }
     },
     {
@@ -92,6 +151,23 @@
       "then": {
         "properties": { "decision": { "const": "deny" } },
         "description": "Попадание в запрещённый диапазон не бывает разрешением. Обращение к цели в туннельной сети идёт не через egress, а через брокер соединений с проверкой прав на машину."
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "resolved_ips": {
+            "contains": {
+              "properties": { "class": { "const": "metadata" } },
+              "required": ["class"]
+            }
+          }
+        },
+        "required": ["resolved_ips"]
+      },
+      "then": {
+        "properties": { "decision": { "const": "deny" } },
+        "description": "Служба метаданных облака запрещена без исключений: обращение к ней равносильно запросу учётных данных виртуальной машины."
       }
     },
     {

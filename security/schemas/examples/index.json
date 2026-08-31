@@ -1,48 +1,40 @@
 {
   "version": 1,
-  "note": "Перечень примеров и ожидаемого результата проверки. Файлы с суффиксом invalid обязаны быть отвергнуты: именно они доказывают, что ограничение работает, а не только описано. Пример, добавленный в каталог и не перечисленный здесь, считается ошибкой.",
+  "note": "Перечень примеров и ожидаемого результата проверки. Файлы с суффиксом invalid обязаны быть отвергнуты: именно они доказывают, что ограничение работает, а не только описано. Пример, добавленный в каталог и не перечисленный здесь, считается ошибкой. Признак invariant отмечает случаи, где решает межполевая проверка из validate.mjs, а не сама схема.",
   "cases": [
     {
-      "file": "identity.human.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:identity",
-      "valid": true,
-      "note": "Человек с личностью из Cloudflare Access, доверие к которой обусловлено закрытым прямым входом."
-    },
-    {
-      "file": "identity.cf-access-always.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "file": "approval.critical-reused.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:approval",
       "valid": false,
-      "note": "trusted_only_when=always: заголовок с личностью объявлен доверенным безусловно."
+      "invariant": true,
+      "note": "Критическое действие с многократным использованием, длинным сроком и подтверждением в том же интерфейсе."
     },
     {
-      "file": "identity.agent.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "file": "approval.single-use.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:approval",
       "valid": true,
-      "note": "Агент всегда действует от имени человека и имеет профиль с допустимыми источниками данных."
+      "invariant": true,
+      "note": "Одноразовое одобрение с привязкой к запросу, хешу аргументов, исполнителю, nonce и сроку."
     },
     {
-      "file": "identity.agent-without-human.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "file": "audit-event.checkpoint.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:audit-event",
+      "valid": true,
+      "invariant": true,
+      "note": "Подписанная контрольная точка, выложенная во внешнее хранилище; диапазон согласован со счётчиком."
+    },
+    {
+      "file": "audit-event.secret-in-log.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:audit-event",
       "valid": false,
-      "note": "Агент без on_behalf_of: автономный субъект, которого в релизе A не существует."
+      "note": "Учётные данные попали в атрибуты события выдачи секрета."
     },
     {
-      "file": "identity.service-executor.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "file": "audit-event.tool-request.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:audit-event",
       "valid": true,
-      "note": "Исполнитель: отдельная учётная запись, снятые привилегии, запись только в рабочий и карантинный корни."
-    },
-    {
-      "file": "identity.device.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:identity",
-      "valid": true,
-      "note": "Устройство с ключом в TPM и коротким сроком сертификата."
-    },
-    {
-      "file": "capability.file-read.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:capability",
-      "valid": true,
-      "note": "Чтение в пределах поддерева зарегистрированного корня."
+      "invariant": true,
+      "note": "Первое событие потока: prev_hash из нулей, редактирование выполнено до вычисления хеша."
     },
     {
       "file": "capability.command-exec.valid.json",
@@ -57,124 +49,161 @@
       "note": "Критический риск с автономным выполнением, предодобрением и переуступкой."
     },
     {
+      "file": "capability.file-read.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:capability",
+      "valid": true,
+      "note": "Чтение в пределах поддерева зарегистрированного корня."
+    },
+    {
       "file": "capability.no-expiry.invalid.json",
       "schema": "urn:ai-friends:schema:agent:v1:capability",
       "valid": false,
       "note": "Полномочие без срока: отзыв перестаёт работать без связи с центром."
     },
     {
-      "file": "token.agent.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:token",
-      "valid": true,
-      "note": "Токен агента: цепочка действующих лиц, срок не больше часа, привязка к сессии наблюдателя."
-    },
-    {
-      "file": "token.exec.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:token",
-      "valid": true,
-      "note": "Одноразовый токен на один вызов: срок 120 секунд, привязка к запросу и хешу аргументов."
-    },
-    {
-      "file": "token.exec-long-ttl.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:token",
+      "file": "connect-request.cross-target.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:connect-request",
       "valid": false,
-      "note": "Час жизни у токена, который должен жить две минуты."
+      "invariant": true,
+      "note": "Разрешение выдано на лабораторную машину и один профиль, а применяется к контроллеру домена и другому профилю."
     },
     {
-      "file": "token.empty-caps.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:token",
-      "valid": true,
-      "note": "Пустая область — законное состояние «ничего нельзя», а не ошибка."
-    },
-    {
-      "file": "token.no-caps.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:token",
+      "file": "connect-request.literal-address.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:connect-request",
       "valid": false,
-      "note": "Область не указана вовсе: толкования «значит, без ограничений» в контракте нет."
+      "note": "Цель задана literal-адресом от вызывающего."
     },
     {
-      "file": "tool-descriptor.command-exec.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-descriptor",
-      "valid": true,
-      "note": "at_most_once, повтор запрещён, секрет только ссылкой на профиль."
-    },
-    {
-      "file": "tool-descriptor.file-read.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-descriptor",
-      "valid": true,
-      "note": "Чтение: read_only, без одобрения, вывод ограничен."
-    },
-    {
-      "file": "tool-descriptor.at-most-once-retry.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-descriptor",
+      "file": "connect-request.protocol-mismatch.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:connect-request",
       "valid": false,
-      "note": "Инструмент at_most_once объявлен безопасным для повтора."
+      "invariant": true,
+      "note": "Разрешение выдано на ssh, а цель объявлена конечной точкой RDP."
     },
     {
-      "file": "tool-request.command-exec.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "file": "connect-request.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:connect-request",
       "valid": true,
-      "note": "Полный запрос с одобрением, целью из реестра и меткой происхождения."
+      "invariant": true,
+      "note": "Подключение по ссылке на профиль и записи реестра; разрешение брокера связывает профиль, цель, протокол, узлы и запрос."
     },
     {
-      "file": "tool-request.file-read.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "file": "connect-result.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:connect-request#/$defs/result",
       "valid": true,
-      "note": "Путь задан парой «корень плюс относительный путь»."
+      "note": "Ответ брокера: непрозрачный дескриптор вместо учётных данных."
     },
     {
-      "file": "tool-request.path-traversal.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "file": "egress-decision.allow-direct.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
       "valid": false,
-      "note": "Относительный путь с выходом вверх отвергается схемой, до всякой проверки в коде."
+      "note": "Разрешение в обход прокси: закрепление адресов держалось бы на добросовестности того же процесса."
     },
     {
-      "file": "tool-request.unc-path.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
-      "valid": false,
-      "note": "UNC-путь в относительном пути: обратная косая черта запрещена типом relpath."
-    },
-    {
-      "file": "tool-request.retry-without-key.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
-      "valid": false,
-      "note": "Повторная подача без ключа идемпотентности неотличима от нового действия."
-    },
-    {
-      "file": "tool-request.untrusted-without-approval.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
-      "valid": false,
-      "note": "Аргументы выведены из вывода чужой машины, одобрения нет."
-    },
-    {
-      "file": "tool-result.partial.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-result",
+      "file": "egress-decision.allow-private-exception.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
       "valid": true,
-      "note": "Частичный результат помечен усечённым, состояние цели заявлено как applied."
+      "invariant": true,
+      "note": "Непубличный адрес разрешён только узким исключением под конкретный ресурс, адрес и порт."
     },
     {
-      "file": "tool-error.approval-expired.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-error",
-      "valid": true,
-      "note": "Отказ до выполнения: effect=none, повтор запрещён."
-    },
-    {
-      "file": "tool-error.retryable-unknown.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-error",
+      "file": "egress-decision.allow-private-no-exception.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
       "valid": false,
-      "note": "Повтор разрешён при неизвестном состоянии цели без требования ключа идемпотентности."
+      "note": "Общее разрешение молча пропускает частный адрес, без узкого исключения."
     },
     {
-      "file": "tool-error.denied-with-effect.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-error",
+      "file": "egress-decision.allow-without-pin.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
       "valid": false,
-      "note": "Отказ политики не может сопровождаться уже применённым действием."
+      "note": "Разрешение без закрепления адресов открывает подмену имени между проверкой и соединением."
     },
     {
-      "file": "tool-cancel.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:tool-cancel",
+      "file": "egress-decision.allow.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
       "valid": true,
-      "note": "Остановка наблюдающим человеком, мягкий режим."
+      "invariant": true,
+      "note": "Разрешение к группе назначений с закреплением классифицированных адресов и через фильтрующий прокси."
+    },
+    {
+      "file": "egress-decision.class-lie.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
+      "valid": false,
+      "invariant": true,
+      "note": "Служебный адрес метаданных объявлен публичным."
+    },
+    {
+      "file": "egress-decision.deny-metadata.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
+      "valid": true,
+      "invariant": true,
+      "note": "Отказ браузерному работнику при обращении в служебный диапазон."
+    },
+    {
+      "file": "identity.agent-release-a-unattended.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "valid": false,
+      "note": "Профиль агента объявляет автономную работу в релизе A: автономность включалась бы правкой записи субъекта."
+    },
+    {
+      "file": "identity.agent-without-human.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "valid": false,
+      "note": "Агент без on_behalf_of: автономный субъект, которого в релизе A не существует."
+    },
+    {
+      "file": "identity.agent.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "valid": true,
+      "note": "Агент всегда действует от имени человека и имеет профиль с допустимыми источниками данных."
+    },
+    {
+      "file": "identity.cf-access-always.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "valid": false,
+      "note": "trusted_only_when=always: заголовок с личностью объявлен доверенным безусловно."
+    },
+    {
+      "file": "identity.device.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "valid": true,
+      "note": "Устройство с ключом в TPM и коротким сроком сертификата."
+    },
+    {
+      "file": "identity.executor-keeps-debug.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "valid": false,
+      "note": "У исполнителя не снята SeDebugPrivilege: она открывает память брокера секретов."
+    },
+    {
+      "file": "identity.executor-writes-policy.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "valid": false,
+      "note": "Исполнителю разрешена запись в политику, журнал, секреты, автозапуск и каталог приложения."
+    },
+    {
+      "file": "identity.human.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "valid": true,
+      "note": "Человек с личностью из Cloudflare Access, доверие к которой обусловлено закрытым прямым входом."
+    },
+    {
+      "file": "identity.kind-id-mismatch.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "valid": false,
+      "note": "Вид human при идентификаторе agent: маршрутизация по kind и сверка по id дали бы разные ответы о том, кто это."
+    },
+    {
+      "file": "identity.service-broker.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "valid": true,
+      "note": "Брокер: запись только в хранилище секретов, отладочная привилегия и олицетворение сняты."
+    },
+    {
+      "file": "identity.service-executor.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:identity",
+      "valid": true,
+      "note": "Исполнитель: роль, снятые привилегии, запись только в рабочий и карантинный корни."
     },
     {
       "file": "policy-decision.allow-with-approval.valid.json",
@@ -189,64 +218,11 @@
       "note": "Отказ по нарушению удержания в корне."
     },
     {
-      "file": "approval.single-use.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:approval",
-      "valid": true,
-      "note": "Одноразовое одобрение с привязкой к хешу аргументов, исполнителю, nonce и сроку."
-    },
-    {
-      "file": "approval.critical-reused.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:approval",
-      "valid": false,
-      "note": "Критическое действие с многократным использованием, длинным сроком и подтверждением в том же интерфейсе."
-    },
-    {
-      "file": "audit-event.tool-request.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:audit-event",
-      "valid": true,
-      "note": "Первое событие потока: prev_hash из нулей, редактирование выполнено до вычисления хеша."
-    },
-    {
-      "file": "audit-event.checkpoint.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:audit-event",
-      "valid": true,
-      "note": "Подписанная контрольная точка, выложенная во внешнее хранилище."
-    },
-    {
-      "file": "audit-event.secret-in-log.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:audit-event",
-      "valid": false,
-      "note": "Учётные данные попали в атрибуты события выдачи секрета."
-    },
-    {
-      "file": "connect-request.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:connect-request",
-      "valid": true,
-      "note": "Подключение по ссылке на профиль и записи реестра, без принятия неизвестного ключа узла."
-    },
-    {
-      "file": "connect-request.literal-address.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:connect-request",
-      "valid": false,
-      "note": "Цель задана literal-адресом от вызывающего."
-    },
-    {
-      "file": "connect-result.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:connect-request#/$defs/result",
-      "valid": true,
-      "note": "Ответ брокера: непрозрачный дескриптор вместо учётных данных."
-    },
-    {
-      "file": "share.http.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:share",
-      "valid": true,
-      "note": "Публикация подкаталога по HTTPS в туннельной сети, с токеном, сроком и без перечисления содержимого."
-    },
-    {
-      "file": "share.wildcard-bind.invalid.json",
+      "file": "share.address-class-lie.invalid.json",
       "schema": "urn:ai-friends:schema:agent:v1:share",
       "valid": false,
-      "note": "Привязка к 0.0.0.0 и открытый текст за пределами петлевого интерфейса."
+      "invariant": true,
+      "note": "Публичный адрес объявлен петлевым: проверка класса смотрит на сам адрес."
     },
     {
       "file": "share.ftp-default-password.invalid.json",
@@ -255,34 +231,226 @@
       "note": "FTP-сервер с паролем по умолчанию и без аутентификации: ровно то состояние, от которого мы уходим."
     },
     {
+      "file": "share.http.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:share",
+      "valid": true,
+      "invariant": true,
+      "note": "Публикация подкаталога по HTTPS в туннельной сети, с токеном, сроком и без перечисления содержимого."
+    },
+    {
+      "file": "share.loopback-plaintext.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:share",
+      "valid": true,
+      "invariant": true,
+      "note": "За петлевым адресом открытый текст допустим, и класс адреса это подтверждает."
+    },
+    {
       "file": "share.no-auth.invalid.json",
       "schema": "urn:ai-friends:schema:agent:v1:share",
       "valid": false,
       "note": "Публикация без аутентификации даже за петлевым интерфейсом."
     },
     {
-      "file": "share.no-ttl.invalid.json",
+      "file": "share.public-plaintext.invalid.json",
       "schema": "urn:ai-friends:schema:agent:v1:share",
       "valid": false,
-      "note": "Публикация без срока превращается в постоянную дверь."
+      "note": "Публичный адрес без TLS: условие привязано к адресу, а не к названию интерфейса."
     },
     {
-      "file": "egress-decision.allow.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
-      "valid": true,
-      "note": "Разрешение к группе назначений с закреплением адресов и через фильтрующий прокси."
-    },
-    {
-      "file": "egress-decision.deny-metadata.valid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
-      "valid": true,
-      "note": "Отказ браузерному работнику при обращении в служебный диапазон."
-    },
-    {
-      "file": "egress-decision.allow-without-pin.invalid.json",
-      "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
+      "file": "share.ttl-expiry-mismatch.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:share",
       "valid": false,
-      "note": "Разрешение без закрепления разрешённых адресов открывает подмену имени между проверкой и соединением."
+      "invariant": true,
+      "note": "Объявлен час жизни, а срок истекает через сутки: запись выглядит короткоживущей, оставаясь долгой."
+    },
+    {
+      "file": "share.wildcard-bind.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:share",
+      "valid": false,
+      "note": "Привязка к 0.0.0.0 и открытый текст за пределами петлевого интерфейса."
+    },
+    {
+      "file": "token.agent.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:token",
+      "valid": true,
+      "invariant": true,
+      "note": "Токен агента: цепочка лиц, срок не больше часа, привязка к сессии наблюдателя, af_ttl совпадает с окном."
+    },
+    {
+      "file": "token.empty-caps.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:token",
+      "valid": true,
+      "invariant": true,
+      "note": "Пустая область — законное состояние «ничего нельзя», а не ошибка."
+    },
+    {
+      "file": "token.exec-binding-mismatch.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:token",
+      "valid": false,
+      "invariant": true,
+      "note": "Привязка ссылается на другой запрос: одобрение одного вызова стало бы правом на другой."
+    },
+    {
+      "file": "token.exec-long-ttl.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:token",
+      "valid": false,
+      "invariant": true,
+      "note": "Час жизни у токена, который должен жить две минуты."
+    },
+    {
+      "file": "token.exec-no-supervisor.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:token",
+      "valid": false,
+      "note": "Исполнительное полномочие в релизе A без сессии наблюдателя: право пережило бы конец смены."
+    },
+    {
+      "file": "token.exec.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:token",
+      "valid": true,
+      "invariant": true,
+      "note": "Токен на вызов: 120 секунд, подписанная привязка, наблюдатель, поля привязки совпадают с полями токена."
+    },
+    {
+      "file": "token.no-caps.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:token",
+      "valid": false,
+      "note": "Область не указана вовсе: толкования «значит, без ограничений» в контракте нет."
+    },
+    {
+      "file": "tool-cancel.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-cancel",
+      "valid": true,
+      "note": "Остановка наблюдающим человеком, мягкий режим."
+    },
+    {
+      "file": "tool-descriptor.at-most-once-retry.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-descriptor",
+      "valid": false,
+      "note": "Инструмент at_most_once объявлен безопасным для повтора."
+    },
+    {
+      "file": "tool-descriptor.command-exec.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-descriptor",
+      "valid": true,
+      "note": "at_most_once, повтор запрещён, секрет только ссылкой на профиль."
+    },
+    {
+      "file": "tool-descriptor.file-read.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-descriptor",
+      "valid": true,
+      "note": "Чтение: read_only, без одобрения, вывод ограничен."
+    },
+    {
+      "file": "tool-error.approval-expired.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-error",
+      "valid": true,
+      "note": "Отказ до выполнения: effect=none, повтор запрещён."
+    },
+    {
+      "file": "tool-error.denied-with-effect.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-error",
+      "valid": false,
+      "note": "Отказ политики не может сопровождаться уже применённым действием."
+    },
+    {
+      "file": "tool-error.retryable-unknown.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-error",
+      "valid": false,
+      "note": "Повтор разрешён при неизвестном состоянии цели без требования ключа идемпотентности."
+    },
+    {
+      "file": "tool-request.command-exec.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": true,
+      "invariant": true,
+      "note": "Полный запрос с одобрением, целью из реестра и подтверждённой меткой происхождения."
+    },
+    {
+      "file": "tool-request.constructor-key.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "note": "Ключ constructor: без проверки собственных свойств отсутствующее поле выглядело бы существующим."
+    },
+    {
+      "file": "tool-request.deadline-not-after-issue.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "invariant": true,
+      "note": "Срок совпадает с моментом подачи: запрос просрочен в момент отправки."
+    },
+    {
+      "file": "tool-request.file-read.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": true,
+      "invariant": true,
+      "note": "Путь задан парой «корень плюс относительный путь»."
+    },
+    {
+      "file": "tool-request.impossible-date.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "note": "30 февраля проходит по образцу, но не существует на оси времени."
+    },
+    {
+      "file": "tool-request.impossible-hour.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "note": "Двадцать пятый час: образец пропускает, разбор — нет."
+    },
+    {
+      "file": "tool-request.path-traversal.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "note": "Относительный путь с выходом вверх отвергается схемой, до всякой проверки в коде."
+    },
+    {
+      "file": "tool-request.prototype-pollution.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "note": "Ключ __proto__ в свободной части аргументов."
+    },
+    {
+      "file": "tool-request.retry-without-key.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "note": "Повторная подача без ключа идемпотентности неотличима от нового действия."
+    },
+    {
+      "file": "tool-request.superscript-device.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "note": "Имя COM с надстрочной единицей: Windows разбирает его как то же устройство, что COM1."
+    },
+    {
+      "file": "tool-request.superscript-lpt.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "note": "То же для LPT с надстрочной двойкой, в том числе с расширением."
+    },
+    {
+      "file": "tool-request.unc-path.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "note": "UNC-путь в относительном пути: обратная косая черта запрещена типом relpath."
+    },
+    {
+      "file": "tool-request.untrusted-source-hidden.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "note": "Недоверенный источник указан в списке, а derived_from_untrusted оставлен ложным: схема поднимает признак принудительно."
+    },
+    {
+      "file": "tool-request.untrusted-without-approval.invalid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+      "valid": false,
+      "note": "Аргументы выведены из вывода чужой машины, одобрения нет."
+    },
+    {
+      "file": "tool-result.partial.valid.json",
+      "schema": "urn:ai-friends:schema:agent:v1:tool-result",
+      "valid": true,
+      "invariant": true,
+      "note": "Частичный результат помечен усечённым, состояние цели заявлено как applied."
     }
   ]
 }

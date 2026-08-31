@@ -1,0 +1,51 @@
+{
+  "name": "npm-audit-fixture",
+  "version": "1.0.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "npm-audit-fixture",
+      "version": "1.0.0",
+      "license": "MIT",
+      "dependencies": {
+        "forbidden-license": "1.0.0",
+        "lifecycle-pkg": "git+https://github.com/example/lifecycle-pkg.git",
+        "mirror-pkg": "^1.0.0",
+        "missing-integrity": "1.0.0",
+        "native-pkg": "1.0.0"
+      }
+    },
+    "node_modules/forbidden-license": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/forbidden-license/-/forbidden-license-1.0.0.tgz",
+      "integrity": "sha512-Zml4dHVyZS1ub3QtZG93bmxvYWQ="
+    },
+    "node_modules/lifecycle-pkg": {
+      "version": "1.0.0",
+      "resolved": "git+https://github.com/example/lifecycle-pkg.git#0123456789abcdef",
+      "hasInstallScript": true
+    },
+    "node_modules/mirror-pkg": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmmirror.com/mirror-pkg/-/mirror-pkg-1.0.0.tgz",
+      "integrity": "sha512-Zml4dHVyZS1taXJyb3I="
+    },
+    "node_modules/missing-integrity": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/missing-integrity/-/missing-integrity-1.0.0.tgz"
+    },
+    "node_modules/native-pkg": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/native-pkg/-/native-pkg-1.0.0.tgz",
+      "integrity": "FIXTURE_NATIVE_INTEGRITY",
+      "hasInstallScript": true,
+      "cpu": [
+        "x64"
+      ],
+      "os": [
+        "win32"
+      ]
+    }
+  }
+}

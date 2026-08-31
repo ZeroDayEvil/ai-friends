@@ -1,0 +1,12 @@
+{
+  "name": "npm-audit-fixture",
+  "version": "1.0.0",
+  "license": "MIT",
+  "dependencies": {
+    "forbidden-license": "1.0.0",
+    "lifecycle-pkg": "git+https://github.com/example/lifecycle-pkg.git",
+    "mirror-pkg": "^1.0.0",
+    "missing-integrity": "1.0.0",
+    "native-pkg": "1.0.0"
+  }
+}

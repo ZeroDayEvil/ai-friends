@@ -72,6 +72,11 @@ jobs:
           }
           Write-Host 'Кодировки в порядке.'
 
+      - name: Безопасные тесты сборочных примитивов
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File tests\build\Test-Build.ps1
+
 # Планируется добавить: osv-scanner и trivy. Сознательно не включены сейчас,
 # потому что их нужно закрепить конкретной версией с проверкой контрольной
 # суммы, а не тянуть подвижным тегом -- иначе CI будет нарушать ту самую

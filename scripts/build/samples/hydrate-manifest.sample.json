@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "officialHosts": [
+    "github.com"
+  ],
+  "artifacts": [
+    {
+      "id": "example-tool-win-x64",
+      "version": "1.2.3",
+      "url": "https://github.com/example/tool/releases/download/v1.2.3/tool-win-x64.zip",
+      "destination": "archives/tool-win-x64.zip",
+      "size": 123456,
+      "sha256": "89abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567",
+      "license": "MIT",
+      "trustTier": "official",
+      "purpose": "Pinned build helper archived for manual use only.",
+      "installPolicy": "manual-copy",
+      "lifecycle": "pinned"
+    }
+  ]
+}

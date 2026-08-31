@@ -21,6 +21,10 @@ jobs:
         run: node --test scripts/test-check-pins.mjs
       - name: Проверка пинов и запрета исполнения скачанного кода
         run: node scripts/check-pins.mjs
+      - name: Проверка происхождения в GitHub
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/check-pins.mjs --online
 
   shell:
     name: Оболочка

@@ -1,15 +1,34 @@
 {
-  "version": 1,
+  "version": 2,
+  "external_id": "electerm-web",
   "source_root": "apps/electerm-web",
   "upstream": {
     "repository": "https://github.com/electerm/electerm-web",
     "commit": "f1deaf02fead7faa1bfb4381f69fbb734ea7f95f",
     "tree_sha1": "c1ed8147c02ada4d80ccafff9761c33de7d0551c",
+    "commit_object": {
+      "object_format": "git-sha1",
+      "raw_content_encoding": "base64",
+      "raw_content_base64": "dHJlZSBjMWVkODE0N2MwMmFkYTRkODBjY2FmZmY5NzYxYzMzZGU3ZDA1NTFjCnBhcmVudCA1MTNiOTUwODg3NWFhODhkNjUwM2E1NmExOTRjZmJmZjNhZjdkZTA4CmF1dGhvciBaSEFPIFh1ZG9uZyA8enhkb25nQGdtYWlsLmNvbT4gMTc4Nzg4NjIyMiArMDgwMApjb21taXR0ZXIgWkhBTyBYdWRvbmcgPHp4ZG9uZ0BnbWFpbC5jb20+IDE3ODc4ODYyMjIgKzA4MDAKClVwZGF0ZSBkZXBzCg==",
+      "raw_content_sha256": "4bc55a53203f9369972606d3a8521387acf61cf35e95e7834de1d645e42e20d6",
+      "tree_sha1": "c1ed8147c02ada4d80ccafff9761c33de7d0551c",
+      "parents": [
+        "513b9508875aa88d6503a56a194cfbff3af7de08"
+      ],
+      "author": "ZHAO Xudong <zxdong@gmail.com> 1787886222 +0800",
+      "committer": "ZHAO Xudong <zxdong@gmail.com> 1787886222 +0800",
+      "message_encoding": "utf-8",
+      "message": "Update deps\n"
+    },
     "commit_api": "https://api.github.com/repos/electerm/electerm-web/git/commits/f1deaf02fead7faa1bfb4381f69fbb734ea7f95f",
     "tree_api": "https://api.github.com/repos/electerm/electerm-web/git/trees/c1ed8147c02ada4d80ccafff9761c33de7d0551c?recursive=1",
-    "archive_url": "https://codeload.github.com/electerm/electerm-web/tar.gz/f1deaf02fead7faa1bfb4381f69fbb734ea7f95f",
-    "archive_sha256": "d60063b491d6b441b93a35e888a06338a09f3d1b89c339f02813a7747f7a14b4",
-    "archive_regular_file_count": 154,
+    "archive": {
+      "commit": "f1deaf02fead7faa1bfb4381f69fbb734ea7f95f",
+      "url": "https://codeload.github.com/electerm/electerm-web/tar.gz/f1deaf02fead7faa1bfb4381f69fbb734ea7f95f",
+      "sha256": "d60063b491d6b441b93a35e888a06338a09f3d1b89c339f02813a7747f7a14b4",
+      "byte_length": 330723,
+      "regular_file_count": 154
+    },
     "commit_signature": {
       "verified": false,
       "reason": "unsigned"
@@ -25,6 +44,9 @@
   },
   "verification_method": {
     "retrieval": "Downloaded the GitHub codeload archive for the full commit SHA over HTTPS.",
+    "commit_object": "Fetched the raw Git commit object through the official GitHub HTTPS Git transport in an isolated no-hooks temporary repository, then computed SHA-1 over commit <length> NUL raw-content.",
+    "offline_anchor": "The raw commit SHA-1 must equal the external commit pin, its tree header must equal the reconstructed tree SHA-1, and that tree is rebuilt from every locked path, mode, and blob identity.",
+    "online_reverification": "The optional check-pins --online mode reads only bounded GitHub API commit/tree responses and the bounded codeload archive, then compares their metadata and archive SHA-256 with this lock.",
     "archive_member_policy": "Rejected absolute paths, backslash paths, traversal, duplicate paths, symlinks, hardlinks, devices, FIFOs, and non-regular entries before extraction.",
     "tree_comparison": "Compared the non-truncated GitHub recursive tree file set, file sizes, and computed Git blob SHA-1 values with archive bytes before and during extraction.",
     "post_extraction_policy": "Rejected reparse points and symlinks in the extracted tree; every imported regular file is listed below."

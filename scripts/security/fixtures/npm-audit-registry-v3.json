@@ -1,0 +1,63 @@
+{
+  "forbidden-license@1.0.0": {
+    "name": "forbidden-license",
+    "version": "1.0.0",
+    "license": "GPL-3.0-only",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/example/forbidden-license.git"
+    },
+    "dist": {
+      "integrity": "sha512-Zml4dHVyZS1ub3QtZG93bmxvYWQ=",
+      "tarball": "https://registry.npmjs.org/forbidden-license/-/forbidden-license-1.0.0.tgz"
+    }
+  },
+  "lifecycle-pkg@1.0.0": {
+    "name": "lifecycle-pkg",
+    "version": "1.0.0",
+    "license": "MIT",
+    "scripts": {
+      "postinstall": "node scripts/download.js"
+    },
+    "dist": {
+      "integrity": "sha512-Zml4dHVyZS1saWZlY3ljbGU=",
+      "tarball": "https://registry.npmjs.org/lifecycle-pkg/-/lifecycle-pkg-1.0.0.tgz"
+    }
+  },
+  "mirror-pkg@1.0.0": {
+    "name": "mirror-pkg",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dist": {
+      "integrity": "sha512-Zml4dHVyZS1taXJyb3I=",
+      "tarball": "https://registry.npmjs.org/mirror-pkg/-/mirror-pkg-1.0.0.tgz"
+    }
+  },
+  "missing-integrity@1.0.0": {
+    "name": "missing-integrity",
+    "version": "1.0.0",
+    "licenses": [
+      {
+        "type": "MIT"
+      }
+    ],
+    "dist": {
+      "integrity": "sha512-Zml4dHVyZS1tZXRhZGF0YQ==",
+      "tarball": "https://registry.npmjs.org/missing-integrity/-/missing-integrity-1.0.0.tgz"
+    }
+  },
+  "native-pkg@1.0.0": {
+    "name": "native-pkg",
+    "version": "1.0.0",
+    "license": "MIT",
+    "gypfile": true,
+    "scripts": {
+      "install": "node install.js"
+    },
+    "repository": "https://github.com/example/native-pkg",
+    "dist": {
+      "integrity": "FIXTURE_NATIVE_INTEGRITY",
+      "tarball": "https://registry.npmjs.org/native-pkg/-/native-pkg-1.0.0.tgz"
+    }
+  }
+}

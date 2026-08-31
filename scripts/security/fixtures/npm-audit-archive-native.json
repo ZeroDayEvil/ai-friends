@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "package/package.json",
+      "text": "{\"name\":\"native-pkg\",\"version\":\"1.0.0\",\"license\":\"MIT\",\"gypfile\":true,\"scripts\":{\"install\":\"node install.js\"}}"
+    },
+    {
+      "path": "package/install.js",
+      "text": "const { execFile } = require('node:child_process')\nfetch('https://registry.npmjs.org/native-pkg/-/native-pkg-1.0.0.tgz')\nexecFile('node-gyp', ['rebuild'])\n"
+    },
+    {
+      "path": "package/binding.gyp",
+      "text": "{\"targets\":[{\"target_name\":\"native\"}]}"
+    },
+    {
+      "path": "package/prebuilds/win32-x64/native.node",
+      "contentBase64": "TVqQAAMAAAAEAAAA//8AALgAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    {
+      "path": "package/LICENSE",
+      "text": "MIT License\n"
+    }
+  ]
+}

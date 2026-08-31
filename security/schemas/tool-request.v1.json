@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-friends:schema:agent:v1:tool-request",
+  "title": "Запрос на выполнение инструмента",
+  "type": "object",
+  "description": "Единственная форма, которой агент просит что-либо сделать. Запрос самодостаточен: по нему одному исполнитель обязан суметь принять решение, не обращаясь к состоянию диалога и не додумывая недостающее. Всё, чего нет в запросе, считается неразрешённым.",
+  "properties": {
+    "schema": { "const": "urn:ai-friends:schema:agent:v1:tool-request" },
+    "request_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "trace_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/trace_id" },
+    "issued_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "deadline": {
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp",
+      "description": "Момент, после которого результат никому не нужен. Обязателен: запрос без срока живёт в очереди неопределённо долго и выполняется в обстановке, для которой его не одобряли."
+    },
+    "tool": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*){1,3}$", "maxLength": 64 },
+    "tool_version": { "type": "integer", "minimum": 1 },
+    "descriptor_hash": {
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256",
+      "description": "Хеш описания инструмента, которое видел агент. Расхождение с реестром даёт отказ tool_descriptor_mismatch: подменённое описание инструмента — это способ заставить агента вызвать не то, что он думает."
+    },
+    "args": {
+      "type": "object",
+      "description": "Аргументы по описанию инструмента. Поля с secret=true здесь невозможны: вместо значения передаётся ссылка на профиль учётных данных."
+    },
+    "args_hash": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
+    "canon": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/canon" },
+    "idempotency_key": {
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid",
+      "description": "Ключ повторной подачи. Требуется для любой попытки, кроме первой, и только у инструментов с semantics=idempotent."
+    },
+    "attempt": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "actor": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+    "act": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/actor_chain" },
+    "session_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+    "device_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" },
+    "target": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/resource_ref" },
+    "capabilities": {
+      "type": "array",
+      "items": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/capability_ref" },
+      "minItems": 0,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "description": "Полномочия, на которые ссылается вызывающий. Присутствие поля обязательно, пустой массив допустим и означает, что вызывающий не заявляет никаких прав — такой запрос отклоняется с capability_missing, а не выполняется как анонимный."
+    },
+    "approval_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "constraints": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/constraints" },
+    "provenance": { "$ref": "#/$defs/provenance_block" }
+  },
+  "required": [
+    "schema",
+    "request_id",
+    "trace_id",
+    "issued_at",
+    "deadline",
+    "tool",
+    "tool_version",
+    "descriptor_hash",
+    "args",
+    "args_hash",
+    "canon",
+    "attempt",
+    "actor",
+    "act",
+    "session_id",
+    "target",
+    "capabilities",
+    "provenance"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "attempt": { "minimum": 2 } }, "required": ["attempt"] },
+      "then": {
+        "required": ["idempotency_key"],
+        "description": "Повторная подача без ключа неотличима от нового действия. Инструменты at_most_once повторной подаче не подлежат вовсе, и это проверяет исполнитель по реестру описаний."
+      }
+    },
+    {
+      "if": {
+        "properties": { "provenance": { "properties": { "derived_from_untrusted": { "const": true } }, "required": ["derived_from_untrusted"] } },
+        "required": ["provenance"]
+      },
+      "then": {
+        "required": ["approval_id"],
+        "description": "Если на аргументы повлияли данные, пришедшие из веб-страницы, из вывода команды или из ответа модели, запрос выполняется только со свежим одобрением человека. Это и есть рабочая защита от внедрения в подсказку: не попытка распознать вредоносный текст, а требование подтверждения именно того действия, которое из него получилось."
+      }
+    }
+  ],
+  "$defs": {
+    "provenance_block": {
+      "type": "object",
+      "description": "Откуда взялись аргументы. Метка ставится оркестратором и не может быть понижена агентом: понижение метки — это и есть обход защиты.",
+      "properties": {
+        "lowest": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/provenance" },
+        "derived_from_untrusted": { "type": "boolean" },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "provenance": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/provenance" },
+              "ref": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/resource_ref" },
+              "observed_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" }
+            },
+            "required": ["provenance"],
+            "additionalProperties": false
+          },
+          "maxItems": 16
+        }
+      },
+      "required": ["lowest", "derived_from_untrusted"],
+      "additionalProperties": false
+    }
+  }
+}

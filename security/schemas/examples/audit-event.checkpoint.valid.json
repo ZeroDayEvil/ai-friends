@@ -1,0 +1,27 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:audit-event",
+  "stream": "af-audit/1",
+  "seq": 512,
+  "event_id": "ad5b6a7f-8e9d-4fc0-b142-5d6e7f809102",
+  "type": "audit.checkpoint",
+  "occurred_at": "2026-08-30T11:00:00Z",
+  "recorded_at": "2026-08-30T11:00:01Z",
+  "hash_alg": "sha256",
+  "canon": "afcanon/1",
+  "prev_hash": "sha256:18293a4b5c6d7e8f18293a4b5c6d7e8f18293a4b5c6d7e8f18293a4b5c6d7e8f",
+  "hash": "sha256:293a4b5c6d7e8f90293a4b5c6d7e8f90293a4b5c6d7e8f90293a4b5c6d7e8f90",
+  "actor": { "kind": "service", "id": "service:af-audit" },
+  "outcome": "info",
+  "checkpoint": {
+    "from_seq": 0,
+    "to_seq": 511,
+    "count": 512,
+    "head_hash": "sha256:18293a4b5c6d7e8f18293a4b5c6d7e8f18293a4b5c6d7e8f18293a4b5c6d7e8f",
+    "published_to": "external_store"
+  },
+  "signature": {
+    "alg": "Ed25519",
+    "key_id": "audit-checkpoint-2026q3",
+    "value": "YXVkaXQtY2hlY2twb2ludC1zaWduYXR1cmUtc2FtcGxlLW5vdC1hLXJlYWwta2V5LTAxMjM0NTY3ODlhYmNkZQ"
+  }
+}

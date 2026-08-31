@@ -1,0 +1,16 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:identity",
+  "principal": { "kind": "human", "id": "human:op-c3d4" },
+  "display_name": "Оператор с доверием к заголовку без условий",
+  "state": "active",
+  "created_at": "2026-08-30T09:00:00Z",
+  "authentication": {
+    "method": "cf-access",
+    "issuer": "https://team-name.cloudflareaccess.example",
+    "audience": "application-aud-tag-placeholder",
+    "algorithms": ["RS256"],
+    "mfa": true,
+    "trusted_only_when": "always"
+  },
+  "roles": ["operator"]
+}

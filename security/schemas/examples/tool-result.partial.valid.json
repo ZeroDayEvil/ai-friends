@@ -1,0 +1,24 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:tool-result",
+  "request_id": "6f1d2c3b-4a59-4b8c-9d0e-1f2a3b4c5d6e",
+  "trace_id": "a1b2c3d4e5f60718a1b2c3d4e5f60718",
+  "status": "partial",
+  "tool": "command.exec",
+  "tool_version": 1,
+  "descriptor_hash": "sha256:b2c3d4e5f6071829b2c3d4e5f6071829b2c3d4e5f6071829b2c3d4e5f6071829",
+  "started_at": "2026-08-30T10:00:01Z",
+  "finished_at": "2026-08-30T10:00:04Z",
+  "attempt": 1,
+  "effect": "applied",
+  "output": {
+    "provenance": "remote_host",
+    "truncated": true,
+    "bytes": 65536,
+    "content_hash": "sha256:d4e5f60718293a4bd4e5f60718293a4bd4e5f60718293a4bd4e5f60718293a4b",
+    "exit_code": 0,
+    "stream_ref": "stream-4c1a"
+  },
+  "policy_decision_id": "7a2e3d4c-5b6a-4c9d-8e1f-2a3b4c5d6e7f",
+  "audit_event_id": "9c4a5f6e-7d8c-4ebf-a031-4c5d6e7f8091",
+  "approval_id": "8b3f4e5d-6c7b-4dae-9f20-3b4c5d6e7f80"
+}

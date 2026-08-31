@@ -1,0 +1,18 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:identity",
+  "principal": { "kind": "human", "id": "human:op-a1b2" },
+  "display_name": "Оператор смены",
+  "state": "active",
+  "created_at": "2026-08-30T09:00:00Z",
+  "updated_at": "2026-08-30T09:00:00Z",
+  "authentication": {
+    "method": "cf-access",
+    "issuer": "https://team-name.cloudflareaccess.example",
+    "audience": "application-aud-tag-placeholder",
+    "algorithms": ["RS256"],
+    "mfa": true,
+    "subject_hint": "op-a1b2@example.test",
+    "trusted_only_when": "direct_origin_closed"
+  },
+  "roles": ["operator", "approver"]
+}

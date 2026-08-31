@@ -1,0 +1,15 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:capability",
+  "capability_id": "cap:read-reports-forever",
+  "action": "file.read",
+  "selector": { "kind": "path", "root_id": "reports", "subpath": "2026", "recursive": true },
+  "granted_to": { "kind": "agent", "id": "agent:runner-7f3a" },
+  "granted_by": { "kind": "human", "id": "human:op-a1b2" },
+  "granted_at": "2026-08-30T09:10:00Z",
+  "release": "A",
+  "supervision": "supervised",
+  "risk": "low",
+  "approval_policy": "never",
+  "delegable": false,
+  "justification": "Полномочие без срока: отзыв возможен только вручную и только при наличии связи."
+}

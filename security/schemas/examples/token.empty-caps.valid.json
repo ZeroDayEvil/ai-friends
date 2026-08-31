@@ -1,0 +1,21 @@
+{
+  "iss": "urn:ai-friends:issuer:control-plane",
+  "sub": "agent:observer-1a4e",
+  "aud": ["af-executor"],
+  "iat": 1787000000,
+  "nbf": 1787000000,
+  "exp": 1787000900,
+  "jti": "be6c7b80-9f0e-41d1-8253-6e7f80910215",
+  "typ": "af-agent",
+  "act": [
+    { "kind": "agent", "id": "agent:observer-1a4e" },
+    { "kind": "human", "id": "human:op-a1b2" }
+  ],
+  "sid": "sess-obs-3d7f",
+  "af_idp": "control-plane",
+  "af_ttl": 900,
+  "af_caps": [],
+  "af_policy": "3.4.1+a1b2c3d4e5f6",
+  "af_release": "A",
+  "af_supervisor_sid": "sess-op-77c1"
+}

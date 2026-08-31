@@ -1,0 +1,27 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:tool-descriptor",
+  "tool": "command.exec",
+  "tool_version": 1,
+  "descriptor_hash": "sha256:b2c3d4e5f6071829b2c3d4e5f6071829b2c3d4e5f6071829b2c3d4e5f6071829",
+  "title": "Выполнение шаблона команды",
+  "summary": "Запускает зарегистрированный шаблон команды с типизированными параметрами на указанной машине. Командная оболочка не используется: параметры передаются процессу массивом, поэтому склейка, подстановка переменных и перенаправление на стороне цели невозможны.",
+  "semantics": "at_most_once",
+  "effect_class": "exec",
+  "risk": "high",
+  "release": "A",
+  "supervision": "supervised",
+  "requires_capabilities": ["command.exec", "credential.connect"],
+  "approval_policy": "always",
+  "cancellable": "cooperative",
+  "retry": { "safe": false, "dedup_window_seconds": 900 },
+  "args": {
+    "fields": [
+      { "name": "template", "type": "command_template_ref", "required": true },
+      { "name": "argv", "type": "argv", "required": true, "max_bytes": 8192, "description": "Значения параметров шаблона в объявленном им порядке." },
+      { "name": "machine", "type": "machine_ref", "required": true },
+      { "name": "profile", "type": "credential_profile_ref", "required": true, "secret": true }
+    ]
+  },
+  "output": { "provenance": "remote_host", "max_bytes": 65536, "streamed": true },
+  "audit": { "record_args": ["template", "argv", "machine", "profile"], "record_output": "truncated" }
+}

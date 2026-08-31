@@ -1,0 +1,33 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:approval",
+  "approval_id": "8b3f4e5d-6c7b-4dae-9f20-3b4c5d6e7f80",
+  "nonce": "bm9uY2Utc2FtcGxlLTAxNg",
+  "policy_decision_id": "7a2e3d4c-5b6a-4c9d-8e1f-2a3b4c5d6e7f",
+  "request_id": "6f1d2c3b-4a59-4b8c-9d0e-1f2a3b4c5d6e",
+  "trace_id": "a1b2c3d4e5f60718a1b2c3d4e5f60718",
+  "tool": "command.exec",
+  "tool_version": 1,
+  "descriptor_hash": "sha256:b2c3d4e5f6071829b2c3d4e5f6071829b2c3d4e5f6071829b2c3d4e5f6071829",
+  "args_hash": "sha256:a1b2c3d4e5f60718a1b2c3d4e5f60718a1b2c3d4e5f60718a1b2c3d4e5f60718",
+  "canon": "afcanon/1",
+  "actor": { "kind": "agent", "id": "agent:runner-7f3a" },
+  "act": [
+    { "kind": "agent", "id": "agent:runner-7f3a" },
+    { "kind": "human", "id": "human:op-a1b2" }
+  ],
+  "target": { "kind": "machine_endpoint", "id": "win-lab-01", "protocol": "ssh" },
+  "approver": { "kind": "human", "id": "human:op-a1b2" },
+  "approver_session_id": "sess-op-77c1",
+  "requested_at": "2026-08-30T09:59:50Z",
+  "approved_at": "2026-08-30T09:59:58Z",
+  "expires_at": "2026-08-30T10:04:58Z",
+  "ttl_seconds": 300,
+  "scope": "single_use",
+  "max_uses": 1,
+  "uses": 1,
+  "channel": "ui",
+  "presented_digest": "sha256:e5f60718293a4b5ce5f60718293a4b5ce5f60718293a4b5ce5f60718293a4b5c",
+  "presentation": "afrender/1",
+  "risk": "high",
+  "revoked": false
+}

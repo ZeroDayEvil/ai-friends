@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-friends:schema:agent:v1:audit-event",
+  "title": "Событие журнала аудита",
+  "type": "object",
+  "description": "Запись в связанной хешем последовательности. Правило вычисления: hash = sha256( \"af-audit/1\\n\" || prev_hash || \"\\n\" || afcanon(событие без полей hash и signature) ), где prev_hash берётся в текстовом виде вместе с префиксом алгоритма, а для первого события равен sha256: и 64 нуля. Редактирование секретов выполняется до вычисления хеша: иначе пришлось бы либо хранить секрет в неизменяемом журнале, либо рвать цепь при его удалении.",
+  "properties": {
+    "schema": { "const": "urn:ai-friends:schema:agent:v1:audit-event" },
+    "stream": {
+      "const": "af-audit/1",
+      "description": "Имя потока и версия формата цепочки одновременно. Каждое устройство ведёт свой поток; сведение потоков выполняется читателем и не нарушает нумерацию."
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Строго возрастает без пропусков внутри потока. Пропуск — это происшествие целостности, а не потеря записи: удаление события ровно так и выглядит."
+    },
+    "event_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "type": {
+      "enum": [
+        "session.opened",
+        "session.closed",
+        "agent.session.started",
+        "agent.session.ended",
+        "token.issued",
+        "token.rejected",
+        "policy.decision",
+        "approval.requested",
+        "approval.granted",
+        "approval.denied",
+        "approval.used",
+        "approval.revoked",
+        "tool.request",
+        "tool.result",
+        "tool.error",
+        "tool.cancelled",
+        "secret.brokered",
+        "connection.opened",
+        "connection.closed",
+        "share.created",
+        "share.revoked",
+        "share.accessed",
+        "egress.decision",
+        "file.access",
+        "device.enrolled",
+        "device.revoked",
+        "config.changed",
+        "audit.checkpoint",
+        "integrity.violation"
+      ]
+    },
+    "occurred_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "recorded_at": {
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp",
+      "description": "Отделено от occurred_at сознательно: расхождение показывает задержку доставки, а совпадение по умолчанию скрыло бы её."
+    },
+    "hash_alg": { "const": "sha256" },
+    "canon": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/canon" },
+    "prev_hash": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
+    "hash": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
+    "actor": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+    "act": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/actor_chain" },
+    "device_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" },
+    "session_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+    "request_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "trace_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/trace_id" },
+    "policy_decision_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "approval_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "policy_version": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/policy_version" },
+    "target": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/resource_ref" },
+    "outcome": { "enum": ["allow", "deny", "ok", "error", "info"] },
+    "reason": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/reason" },
+    "attributes": {
+      "type": "object",
+      "description": "Поля, разрешённые описанием инструмента в audit.record_args. Всё остальное сюда не попадает: список разрешённого, а не список запрещённого, — единственный способ не потерять секрет при добавлении нового аргумента."
+    },
+    "redactions": {
+      "type": "array",
+      "items": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/redaction" },
+      "maxItems": 32
+    },
+    "checkpoint": { "$ref": "#/$defs/checkpoint" },
+    "signature": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/signature" }
+  },
+  "required": [
+    "schema",
+    "stream",
+    "seq",
+    "event_id",
+    "type",
+    "occurred_at",
+    "recorded_at",
+    "hash_alg",
+    "canon",
+    "prev_hash",
+    "hash",
+    "actor",
+    "outcome"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "audit.checkpoint" } }, "required": ["type"] },
+      "then": {
+        "required": ["checkpoint", "signature"],
+        "description": "Контрольная точка подписывается ключом службы аудита и выкладывается туда, куда исполнитель писать не может. Без внешней копии цепочка защищает только от правки середины: тот, кто может переписать весь файл, пересчитает и все хеши."
+      }
+    },
+    {
+      "if": { "properties": { "type": { "enum": ["policy.decision", "approval.used", "tool.request", "tool.result", "tool.error"] } }, "required": ["type"] },
+      "then": { "required": ["request_id", "trace_id"] }
+    },
+    {
+      "if": { "properties": { "outcome": { "enum": ["deny", "error"] } }, "required": ["outcome"] },
+      "then": { "required": ["reason"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "secret.brokered" } }, "required": ["type"] },
+      "then": {
+        "properties": { "attributes": { "not": { "required": ["password"] } } },
+        "description": "Проверка выражает намерение прямолинейно: учётные данные в журнале не появляются даже в поле с очевидным именем. Основная защита — белый список record_args, эта — вторая линия."
+      }
+    }
+  ],
+  "$defs": {
+    "checkpoint": {
+      "type": "object",
+      "properties": {
+        "from_seq": { "type": "integer", "minimum": 0 },
+        "to_seq": { "type": "integer", "minimum": 0 },
+        "count": { "type": "integer", "minimum": 1 },
+        "head_hash": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
+        "published_to": {
+          "enum": ["external_store", "second_device", "printout"],
+          "description": "Куда выложена копия. Значение local в перечислении отсутствует: копия на том же узле не является внешней."
+        }
+      },
+      "required": ["from_seq", "to_seq", "count", "head_hash", "published_to"],
+      "additionalProperties": false
+    }
+  }
+}

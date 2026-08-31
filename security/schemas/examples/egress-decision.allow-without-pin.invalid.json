@@ -1,0 +1,19 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
+  "decision_id": "d08e9da2-b120-43f3-a475-8091021324b1",
+  "trace_id": "b2c3d4e5f6071829b2c3d4e5f6071829",
+  "decided_at": "2026-08-30T10:45:00Z",
+  "actor": { "kind": "agent", "id": "agent:runner-7f3a" },
+  "origin": "tool",
+  "destination_group": "model-provider",
+  "requested": { "host": "api.model-provider.example", "port": 443, "scheme": "https" },
+  "resolved_ips": ["192.0.2.41"],
+  "decision": "allow",
+  "reason": { "code": "ok" },
+  "rule_id": "egress-model-provider",
+  "policy_version": "3.4.1+a1b2c3d4e5f6",
+  "pin_ips": false,
+  "via_proxy": true,
+  "ttl_seconds": 300,
+  "audit_event_id": "9c4a5f6e-7d8c-4ebf-a031-4c5d6e7f8095"
+}

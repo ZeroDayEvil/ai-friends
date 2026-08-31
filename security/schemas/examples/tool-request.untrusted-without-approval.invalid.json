@@ -1,0 +1,34 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:tool-request",
+  "request_id": "d08e9da2-b120-43f3-a475-8091021324ad",
+  "trace_id": "b2c3d4e5f6071829b2c3d4e5f6071829",
+  "issued_at": "2026-08-30T10:07:00Z",
+  "deadline": "2026-08-30T10:07:30Z",
+  "tool": "command.exec",
+  "tool_version": 1,
+  "descriptor_hash": "sha256:b2c3d4e5f6071829b2c3d4e5f6071829b2c3d4e5f6071829b2c3d4e5f6071829",
+  "args": {
+    "template": "restart-print-spooler",
+    "argv": ["Spooler"],
+    "machine": { "kind": "machine", "id": "win-lab-01" },
+    "profile": { "kind": "credential_profile", "id": "lab-service-account" }
+  },
+  "args_hash": "sha256:0718293a4b5c6d7e0718293a4b5c6d7e0718293a4b5c6d7e0718293a4b5c6d7e",
+  "canon": "afcanon/1",
+  "attempt": 1,
+  "actor": { "kind": "agent", "id": "agent:runner-7f3a" },
+  "act": [
+    { "kind": "agent", "id": "agent:runner-7f3a" },
+    { "kind": "human", "id": "human:op-a1b2" }
+  ],
+  "session_id": "sess-9f2b",
+  "target": { "kind": "machine_endpoint", "id": "win-lab-01", "protocol": "ssh" },
+  "capabilities": [{ "capability_id": "cap:exec-service-restart", "action": "command.exec" }],
+  "provenance": {
+    "lowest": "remote_host",
+    "derived_from_untrusted": true,
+    "sources": [
+      { "provenance": "remote_host", "ref": { "kind": "machine", "id": "win-lab-01" }, "observed_at": "2026-08-30T10:06:55Z" }
+    ]
+  }
+}

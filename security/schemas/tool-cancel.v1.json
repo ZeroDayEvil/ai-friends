@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-friends:schema:agent:v1:tool-cancel",
+  "title": "Запрос на отмену выполнения",
+  "type": "object",
+  "description": "Отмена — это просьба, а не гарантия. Контракт обязывает исполнителя ответить на неё завершающим сообщением: либо результатом, либо отказом с кодом cancelled и честным значением effect. Отмена, после которой не приходит ничего, — это потерянное действие с неизвестными последствиями, и такое состояние в контракте недопустимо.",
+  "properties": {
+    "schema": { "const": "urn:ai-friends:schema:agent:v1:tool-cancel" },
+    "request_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "trace_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/trace_id" },
+    "requested_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "requested_by": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+    "reason": {
+      "enum": ["operator", "supervisor", "deadline", "policy", "budget", "shutdown", "superseded"],
+      "description": "policy — отзыв полномочия или смена версии политики на ходу. supervisor — наблюдающий человек нажал стоп. Разделение нужно для разбора: отмена по кнопке и отмена по отзыву прав требуют разных действий после."
+    },
+    "mode": {
+      "enum": ["cooperative", "hard"],
+      "description": "cooperative — исполнителю посылается сигнал, он завершает начатое или прерывается на безопасной границе. hard — исполнение прерывается немедленно; допустимо только для инструментов с cancellable=hard, у остальных приводит к effect=unknown."
+    },
+    "note": { "type": "string", "maxLength": 256 }
+  },
+  "required": ["schema", "request_id", "trace_id", "requested_at", "requested_by", "reason", "mode"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "reason": { "enum": ["policy", "budget"] } }, "required": ["reason"] },
+      "then": {
+        "properties": { "requested_by": { "properties": { "kind": { "enum": ["service", "human"] } } } },
+        "description": "Отмену по политике или по исчерпанию бюджета инициирует плоскость управления или человек. Агент не отменяет собственный запрос по этим причинам: он о них не осведомлён."
+      }
+    }
+  ]
+}

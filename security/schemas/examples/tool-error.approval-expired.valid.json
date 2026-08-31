@@ -1,0 +1,21 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:tool-error",
+  "request_id": "6f1d2c3b-4a59-4b8c-9d0e-1f2a3b4c5d6e",
+  "trace_id": "a1b2c3d4e5f60718a1b2c3d4e5f60718",
+  "status": "error",
+  "tool": "command.exec",
+  "tool_version": 1,
+  "occurred_at": "2026-08-30T10:00:05Z",
+  "attempt": 1,
+  "reason": {
+    "code": "approval_expired",
+    "detail": "Одобрение истекло до начала выполнения, повторное подтверждение не запрашивалось.",
+    "rule_id": "exec-approval-ttl"
+  },
+  "effect": "none",
+  "retryable": false,
+  "policy_decision_id": "7a2e3d4c-5b6a-4c9d-8e1f-2a3b4c5d6e7f",
+  "approval_id": "8b3f4e5d-6c7b-4dae-9f20-3b4c5d6e7f80",
+  "audit_event_id": "ad5b6a7f-8e9d-4fc0-b142-5d6e7f809102",
+  "operator_action_required": false
+}

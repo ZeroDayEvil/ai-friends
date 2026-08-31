@@ -1,0 +1,25 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:identity",
+  "principal": { "kind": "service", "id": "service:af-exec" },
+  "display_name": "Ограниченный исполнитель инструментов",
+  "state": "active",
+  "created_at": "2026-08-30T08:30:00Z",
+  "authentication": { "method": "os-account" },
+  "os_account": {
+    "name": "svc_af_exec",
+    "kind": "virtual_service_account",
+    "privileged": false,
+    "denied_privileges": [
+      "SeDebugPrivilege",
+      "SeBackupPrivilege",
+      "SeRestorePrivilege",
+      "SeTakeOwnershipPrivilege",
+      "SeImpersonatePrivilege",
+      "SeAssignPrimaryTokenPrivilege",
+      "SeLoadDriverPrivilege",
+      "SeSecurityPrivilege",
+      "SeCreateSymbolicLinkPrivilege"
+    ],
+    "can_write": ["work_root", "quarantine_root"]
+  }
+}

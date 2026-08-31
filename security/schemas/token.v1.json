@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-friends:schema:agent:v1:token",
+  "title": "Набор утверждений токена ограниченной области",
+  "type": "object",
+  "description": "Полезная нагрузка подписанного токена. Собственные утверждения имеют префикс af_, чтобы не столкнуться с зарегистрированными именами JWT. Главное правило области: отсутствие af_caps невалидно, а пустой af_caps означает «ничего нельзя». Толкование «поле не задано, значит без ограничений» здесь невыразимо — именно оно превращает ошибку конфигурации в полный доступ.",
+  "properties": {
+    "iss": {
+      "type": "string",
+      "pattern": "^urn:ai-friends:issuer:[a-z0-9][a-z0-9._~-]{1,62}$",
+      "description": "Издатель. Проверяется точным сравнением со списком доверенных издателей."
+    },
+    "sub": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" },
+    "aud": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 128 },
+      "minItems": 1,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "description": "Кому предъявляется. Токен, принятый сервисом, не указанным в aud, — это токен, украденный у одного сервиса и использованный против другого."
+    },
+    "iat": { "type": "integer", "minimum": 0 },
+    "nbf": { "type": "integer", "minimum": 0 },
+    "exp": { "type": "integer", "minimum": 0 },
+    "jti": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "typ": {
+      "enum": ["af-session", "af-agent", "af-exec", "af-device", "af-share"],
+      "description": "af-session — человек. af-agent — агент от имени человека. af-exec — одноразовый токен на один вызов инструмента. af-device — узел. af-share — доступ к опубликованному ресурсу."
+    },
+    "act": {
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/actor_chain",
+      "description": "Цепочка действующих лиц в духе RFC 8693. Позволяет отличить «человек сделал» от «агент сделал от имени человека», не заводя для агента отдельную учётную запись человека."
+    },
+    "cnf": {
+      "type": "object",
+      "description": "Привязка токена к ключу владельца. Без неё украденный токен работает откуда угодно, а короткий срок жизни лишь сокращает окно.",
+      "oneOf": [
+        {
+          "properties": { "x5t#S256": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" } },
+          "required": ["x5t#S256"],
+          "additionalProperties": false
+        },
+        {
+          "properties": { "jkt": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" } },
+          "required": ["jkt"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "sid": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+    "amr": {
+      "type": "array",
+      "items": { "enum": ["pwd", "mfa", "sso", "mtls", "pairing"] },
+      "minItems": 1,
+      "maxItems": 5,
+      "uniqueItems": true
+    },
+    "af_idp": { "enum": ["cf-access", "local", "mtls", "pairing", "control-plane"] },
+    "af_ttl": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Срок жизни в секундах, равный exp − nbf. Утверждение избыточно намеренно: предел срока становится проверяемым одним сравнением и попадает в подписанную часть, поэтому в разборе инцидента видно намерение издателя, а не только результат арифметики. Проверяющая сторона обязана отвергнуть токен, если af_ttl не совпадает с exp − nbf; основной проверкой остаются nbf и exp."
+    },
+    "af_caps": {
+      "type": "array",
+      "items": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/capability_ref" },
+      "minItems": 0,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "description": "Область токена. Обязательно присутствует. Пустой массив — законное состояние «ничего нельзя»."
+    },
+    "af_policy": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/policy_version" },
+    "af_release": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/release" },
+    "af_device": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" },
+    "af_supervisor_sid": {
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug",
+      "description": "Сессия наблюдающего человека. Токен агента становится недействительным в момент её завершения, а не по своему exp: наблюдение, которое переживает наблюдателя, наблюдением не является."
+    },
+    "af_request_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "af_args_hash": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
+    "af_approval_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "af_once": {
+      "type": "boolean",
+      "description": "Одноразовость. Проверяется хранилищем использованных jti, а не только этим флагом: флаг описывает намерение, отказ в повторе обеспечивает хранилище."
+    },
+    "af_share": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+  },
+  "required": ["iss", "sub", "aud", "iat", "nbf", "exp", "jti", "typ", "af_ttl", "af_caps", "af_policy", "af_release"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "typ": { "const": "af-session" } }, "required": ["typ"] },
+      "then": {
+        "required": ["sid", "amr", "af_idp"],
+        "properties": { "af_ttl": { "maximum": 43200 }, "sub": { "pattern": "^human:" } }
+      }
+    },
+    {
+      "if": { "properties": { "typ": { "const": "af-agent" } }, "required": ["typ"] },
+      "then": {
+        "required": ["act", "sid", "af_supervisor_sid"],
+        "properties": { "af_ttl": { "maximum": 3600 }, "sub": { "pattern": "^agent:" } }
+      }
+    },
+    {
+      "if": { "properties": { "typ": { "const": "af-exec" } }, "required": ["typ"] },
+      "then": {
+        "required": ["act", "af_request_id", "af_args_hash", "af_once"],
+        "properties": {
+          "af_ttl": { "maximum": 120 },
+          "af_once": { "const": true },
+          "af_caps": { "minItems": 1, "maxItems": 4 }
+        },
+        "description": "Токен на один вызов живёт две минуты, привязан к идентификатору запроса и к хешу нормализованных аргументов. Это делает бессмысленным как повтор, так и подмену аргументов после выдачи."
+      }
+    },
+    {
+      "if": { "properties": { "typ": { "const": "af-device" } }, "required": ["typ"] },
+      "then": {
+        "required": ["cnf", "af_device"],
+        "properties": {
+          "af_ttl": { "maximum": 3600 },
+          "sub": { "pattern": "^device:" },
+          "cnf": { "required": ["x5t#S256"] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "typ": { "const": "af-share" } }, "required": ["typ"] },
+      "then": {
+        "required": ["af_share"],
+        "properties": { "af_ttl": { "maximum": 86400 }, "af_caps": { "maxItems": 2 } }
+      }
+    },
+    {
+      "if": { "properties": { "af_release": { "const": "A" } }, "required": ["af_release"] },
+      "then": {
+        "if": { "properties": { "typ": { "const": "af-agent" } }, "required": ["typ"] },
+        "then": { "required": ["af_supervisor_sid"] }
+      }
+    }
+  ]
+}

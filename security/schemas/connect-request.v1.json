@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-friends:schema:agent:v1:connect-request",
+  "title": "Типизированное подключение через брокер учётных данных",
+  "type": "object",
+  "description": "Единственный способ, которым агент устанавливает соединение с целью. Агент присылает ссылку на профиль учётных данных и ссылку на цель, а не адрес и пароль. Брокер сам достаёт секрет, сам открывает соединение и возвращает непрозрачный дескриптор. Секрет не попадает ни в аргументы, ни в журнал, ни в контекст модели — не потому, что мы его оттуда вычищаем, а потому, что он туда не передаётся.",
+  "properties": {
+    "schema": { "const": "urn:ai-friends:schema:agent:v1:connect-request" },
+    "request_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "trace_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/trace_id" },
+    "issued_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "deadline": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "profile_ref": {
+      "type": "object",
+      "properties": {
+        "kind": { "const": "credential_profile" },
+        "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+      },
+      "required": ["kind", "id"],
+      "additionalProperties": false,
+      "description": "Ссылка непрозрачна и неперечислима: агент видит только те профили, на которые у него есть полномочие, и видит идентификаторы, а не поля."
+    },
+    "target": {
+      "description": "Цель — всегда запись реестра. Литеральный адрес в контракте невыразим: именно возможность прислать произвольный адрес превращает узел в универсальный прокси внутрь сети.",
+      "type": "object",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "machine" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "machine_endpoint" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+            "protocol": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/protocol" }
+          },
+          "required": ["kind", "id", "protocol"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "bookmark" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false,
+          "description": "Закладка задаёт способ подключения, но не является источником прав: адрес из неё сверяется с реестром машин и с полномочием, а не принимается на веру."
+        }
+      ]
+    },
+    "protocol": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/protocol" },
+    "hop_via": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": { "const": "machine" },
+          "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+        },
+        "required": ["kind", "id"],
+        "additionalProperties": false
+      },
+      "maxItems": 2,
+      "description": "Промежуточные узлы. Каждый требует собственного полномочия: право дойти до цели через машину — это право работать и на этой машине тоже."
+    },
+    "purpose": { "type": "string", "minLength": 4, "maxLength": 256 },
+    "actor": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+    "act": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/actor_chain" },
+    "session_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+    "capability_ref": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/capability_ref" },
+    "approval_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "host_key_policy": {
+      "const": "known_only",
+      "description": "Значения «принять при первом подключении» в контракте нет. В работе человека такое подтверждение хотя бы кто-то видит; у агента оно превращается в автоматическое согласие на подмену узла."
+    },
+    "constraints": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/constraints" }
+  },
+  "required": [
+    "schema",
+    "request_id",
+    "trace_id",
+    "issued_at",
+    "deadline",
+    "profile_ref",
+    "target",
+    "protocol",
+    "purpose",
+    "actor",
+    "act",
+    "session_id",
+    "capability_ref",
+    "host_key_policy"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "result": {
+      "type": "object",
+      "title": "Ответ брокера",
+      "description": "Возвращается дескриптор, а не учётные данные. Дескриптор действует в пределах сессии и на одну цель; попытка использовать его в другой сессии даёт unauthorized.",
+      "properties": {
+        "schema": { "const": "urn:ai-friends:schema:agent:v1:connect-request#/$defs/result" },
+        "request_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+        "connection_handle": {
+          "type": "string",
+          "pattern": "^conn_[A-Za-z0-9_-]{22}$",
+          "description": "Непрозрачное значение без внутренней структуры. Идентификатор процесса и порт в него не входят: угадываемый дескриптор — это доступ к чужому соединению."
+        },
+        "opened_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+        "expires_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+        "owner": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+        "session_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+        "target": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/resource_ref" },
+        "protocol": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/protocol" },
+        "host_key_status": { "enum": ["known", "pinned"] },
+        "host_key_fingerprint": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
+        "audit_event_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" }
+      },
+      "required": [
+        "schema",
+        "request_id",
+        "connection_handle",
+        "opened_at",
+        "expires_at",
+        "owner",
+        "session_id",
+        "target",
+        "protocol",
+        "host_key_status",
+        "host_key_fingerprint",
+        "audit_event_id"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

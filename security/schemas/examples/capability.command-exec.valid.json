@@ -1,0 +1,28 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:capability",
+  "capability_id": "cap:exec-service-restart",
+  "action": "command.exec",
+  "selector": {
+    "kind": "command_template",
+    "ids": ["restart-print-spooler", "query-service-state"]
+  },
+  "granted_to": { "kind": "agent", "id": "agent:runner-7f3a" },
+  "granted_by": { "kind": "human", "id": "human:op-a1b2" },
+  "granted_at": "2026-08-30T09:12:00Z",
+  "expires_at": "2026-08-30T13:12:00Z",
+  "constraints": {
+    "deadline_seconds": 60,
+    "max_output_bytes": 65536,
+    "max_calls": 20,
+    "rate_window_seconds": 3600,
+    "require_supervisor_present": true,
+    "allow_untrusted_provenance": false,
+    "record_session": true
+  },
+  "release": "A",
+  "supervision": "supervised",
+  "risk": "high",
+  "approval_policy": "always",
+  "delegable": false,
+  "justification": "Перезапуск зависшей службы печати на лабораторной станции по шаблону, без свободной командной строки."
+}

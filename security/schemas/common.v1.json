@@ -1,0 +1,404 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-friends:schema:agent:v1:common",
+  "title": "Общие определения контракта плоскости управления",
+  "description": "Словарь, общий для всех проводных форм. Отдельной сущностью на проводе не является, используется только через $ref. Идентификаторы схем сделаны URN, а не URL: контракт не должен ссылаться на несуществующий хост и не должен подталкивать реализацию к загрузке схемы по сети во время работы.",
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "description": "UUID в каноническом нижнем регистре.",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Момент времени в UTC. Смещения запрещены сознательно: журнал аудита упорядочивается по времени, а локальные смещения и переход на летнее время дают неоднозначный порядок и повторяющиеся интервалы.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+    },
+    "sha256": {
+      "type": "string",
+      "description": "SHA-256 в нижнем регистре с явным указанием алгоритма. Префикс обязателен: он оставляет место для смены алгоритма без смены типа поля.",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "canon": {
+      "const": "afcanon/1",
+      "description": "Версия правил канонизации аргументов и событий. Меняется только вместе с версией схемы: иначе одобрение, выданное по старым правилам, оказалось бы применимо к другому набору аргументов."
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._~-]{1,62}$",
+      "minLength": 2,
+      "maxLength": 63
+    },
+    "principal_id": {
+      "type": "string",
+      "description": "Идентификатор субъекта: непрозрачная строка вида kind:slug. Почта, имя учётной записи Windows и прочие человекочитаемые атрибуты сюда не кладутся — они живут в записи identity, меняются со временем и подлежат редактированию в журнале, а идентификатор обязан быть стабильным и нередактируемым.",
+      "pattern": "^(human|agent|device|service):[a-z0-9][a-z0-9._~-]{1,62}$",
+      "maxLength": 71
+    },
+    "principal_kind": {
+      "enum": ["human", "agent", "device", "service"]
+    },
+    "principal_ref": {
+      "type": "object",
+      "description": "Ссылка на субъекта. Вид дублируется отдельным полем, чтобы получатель не разбирал строку идентификатора ради маршрутизации решения.",
+      "properties": {
+        "kind": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_kind" },
+        "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" }
+      },
+      "required": ["kind", "id"],
+      "additionalProperties": false
+    },
+    "actor_chain": {
+      "type": "array",
+      "description": "Цепочка делегирования от непосредственного исполнителя к первоисточнику полномочия. Первый элемент — тот, кто вызывает; последний — человек, чьими правами всё в итоге держится. Цепочка без человека допустима только для служебных и устройственных субъектов.",
+      "items": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+      "minItems": 1,
+      "maxItems": 4
+    },
+    "capability_id": {
+      "type": "string",
+      "pattern": "^cap:[a-z0-9][a-z0-9._~-]{1,62}$"
+    },
+    "action": {
+      "type": "string",
+      "description": "Действие из закрытого пространства имён. Свободных строк тут нет: неизвестное действие даёт отказ, а не пропуск. Список расширяется только вместе с версией схемы.",
+      "enum": [
+        "session.open",
+        "session.attach",
+        "session.close",
+        "session.list",
+        "terminal.read",
+        "terminal.write",
+        "command.exec",
+        "file.list",
+        "file.read",
+        "file.write",
+        "file.delete",
+        "file.transfer.get",
+        "file.transfer.put",
+        "bookmark.read",
+        "bookmark.write",
+        "bookmark.delete",
+        "credential.connect",
+        "share.create",
+        "share.revoke",
+        "task.read",
+        "task.run",
+        "net.egress",
+        "browser.navigate",
+        "browser.interact",
+        "browser.read",
+        "ai.completion",
+        "device.enroll",
+        "policy.read",
+        "audit.read"
+      ]
+    },
+    "capability_ref": {
+      "type": "object",
+      "properties": {
+        "capability_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/capability_id" },
+        "action": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/action" }
+      },
+      "required": ["capability_id", "action"],
+      "additionalProperties": false
+    },
+    "relpath": {
+      "type": "string",
+      "description": "Путь относительно зарегистрированного корня. Абсолютные пути, UNC, пространство устройств, диск-относительные пути, обход вверх, зарезервированные имена устройств и альтернативные потоки данных запрещены на уровне схемы, а не только проверкой в коде: строка, дошедшая до открытия файла, уже не должна нуждаться в разборе. Пустая строка означает сам корень.",
+      "maxLength": 1024,
+      "allOf": [
+        { "type": "string", "pattern": "^(|[^/\\\\:*?\"<>|\\u0000-\\u001f]+(/[^/\\\\:*?\"<>|\\u0000-\\u001f]+)*)$" },
+        { "not": { "pattern": "(^|/)\\.\\.(/|$)" } },
+        { "not": { "pattern": "(^|/)\\.(/|$)" } },
+        { "not": { "pattern": "[ .](/|$)" } },
+        { "not": { "pattern": "(^|/)([cC][oO][nN]|[pP][rR][nN]|[aA][uU][xX]|[nN][uU][lL]|[cC][oO][mM][1-9]|[lL][pP][tT][1-9])(\\.|/|$)" } }
+      ]
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "bind_address": {
+      "type": "string",
+      "description": "Адрес привязки слушателя. Групповые адреса запрещены на уровне схемы: именно значение 0.0.0.0 по умолчанию превращает вспомогательный сервис в дверь для всей сети, и это должно быть невыразимо, а не отговариваемо в документации.",
+      "allOf": [
+        { "type": "string", "maxLength": 45, "minLength": 3 },
+        { "not": { "pattern": "^0\\.0\\.0\\.0$" } },
+        { "not": { "pattern": "^(::|\\[::\\]|0:0:0:0:0:0:0:0)$" } },
+        { "not": { "pattern": "^\\*$" } }
+      ]
+    },
+    "protocol": {
+      "enum": ["ssh", "sftp", "rdp", "vnc", "spice", "telnet", "serial", "ftps", "https"],
+      "description": "Открытого ftp в перечислении нет сознательно, см. docs/design/agent-resource-contracts.md. Telnet оставлен, потому что за ним стоят сетевые устройства без альтернативы, и он всегда помечается высоким риском."
+    },
+    "resource_ref": {
+      "description": "Ссылка на конкретный объект в реестре. Адрес машины, путь на диске и имя хоста никогда не приходят от вызывающего свободной строкой: он присылает идентификатор записи реестра, а адрес подставляет сервер. Иначе любые сетевые и файловые ограничения обходятся вводом другого значения.",
+      "type": "object",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "machine" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "machine_endpoint" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+            "protocol": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/protocol" }
+          },
+          "required": ["kind", "id", "protocol"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "session" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "root" },
+            "root_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "root_id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "path" },
+            "root_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+            "relpath": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/relpath" }
+          },
+          "required": ["kind", "root_id", "relpath"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "bookmark" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "share" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "credential_profile" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "destination_group" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "task" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "device" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "browser_context" },
+            "id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+          },
+          "required": ["kind", "id"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "provenance": {
+      "description": "Происхождение данных, повлиявших на значение. Метка нужна для защиты от внедрения в подсказку: указанием к действию считается только operator и policy, всё остальное — данные. Порядок доверия: operator > policy > system > tool_output > remote_host > web > model.",
+      "enum": ["operator", "policy", "system", "tool_output", "remote_host", "web", "model"]
+    },
+    "risk": {
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "release": {
+      "enum": ["A", "B"],
+      "description": "A — работа под наблюдением человека. B — автономное выполнение сценариев. Возможность, помеченная B, в релизе A не существует, а не выключена флагом."
+    },
+    "supervision": {
+      "enum": ["supervised", "unattended_allowed"],
+      "description": "supervised требует живой сессии наблюдающего человека в момент выполнения."
+    },
+    "semantics": {
+      "enum": ["read_only", "idempotent", "at_most_once"],
+      "description": "read_only не меняет состояние. idempotent можно безопасно повторить с тем же idempotency_key. at_most_once повторять нельзя никому: ни агенту, ни оркестратору, ни транспорту."
+    },
+    "effect": {
+      "enum": ["none", "applied", "unknown"],
+      "description": "unknown — законный и важный исход: разрыв связи или отмена после начала выполнения оставляют состояние цели неизвестным. Подмена unknown на none ради красоты отчёта приводит к повторному выполнению уже применённого действия."
+    },
+    "reason_code": {
+      "description": "Причина решения или отказа. Закрытый список: по нему строятся правила приёмки и разбор инцидентов, свободный текст для этого непригоден.",
+      "enum": [
+        "ok",
+        "unauthenticated",
+        "unauthorized",
+        "capability_missing",
+        "capability_expired",
+        "scope_empty",
+        "approval_required",
+        "approval_expired",
+        "approval_mismatch",
+        "approval_replayed",
+        "policy_denied",
+        "policy_unavailable",
+        "supervisor_absent",
+        "release_not_enabled",
+        "untrusted_provenance",
+        "rate_limited",
+        "quota_exceeded",
+        "invalid_args",
+        "unsupported_tool",
+        "tool_descriptor_mismatch",
+        "target_unknown",
+        "target_unreachable",
+        "host_key_changed",
+        "containment_violation",
+        "protected_path",
+        "egress_blocked",
+        "secret_unavailable",
+        "precondition_failed",
+        "conflict",
+        "timeout",
+        "cancelled",
+        "resource_exhausted",
+        "unavailable",
+        "internal"
+      ]
+    },
+    "reason": {
+      "type": "object",
+      "properties": {
+        "code": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/reason_code" },
+        "detail": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Пояснение для человека. Обязано быть уже отредактированным: значения аргументов, содержимое файлов и ответы цели сюда не попадают."
+        },
+        "rule_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" }
+      },
+      "required": ["code"],
+      "additionalProperties": false
+    },
+    "constraints": {
+      "type": "object",
+      "description": "Ограничения выполнения. Отсутствие поля означает «берётся значение по умолчанию из политики», а не «без ограничения».",
+      "properties": {
+        "deadline_seconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "max_output_bytes": { "type": "integer", "minimum": 0, "maximum": 67108864 },
+        "max_input_bytes": { "type": "integer", "minimum": 0, "maximum": 1073741824 },
+        "max_files": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "max_calls": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "rate_window_seconds": { "type": "integer", "minimum": 1, "maximum": 86400 },
+        "require_supervisor_present": { "type": "boolean" },
+        "allow_untrusted_provenance": {
+          "type": "boolean",
+          "description": "Разрешает выполнение, когда аргументы выведены из данных с происхождением ниже tool_output. Значение по умолчанию — false; осмысленно включать только для чтения."
+        },
+        "record_session": { "type": "boolean" },
+        "time_window": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 0, "maximum": 6 },
+              "uniqueItems": true,
+              "maxItems": 7
+            },
+            "from": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+            "to": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+            "tz": { "const": "UTC" }
+          },
+          "required": ["from", "to", "tz"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "redaction": {
+      "type": "object",
+      "description": "Запись об удалённом значении. Удаление выполняется до вычисления хеша события, поэтому цепочка остаётся проверяемой и после редактирования: иначе пришлось бы либо хранить секрет, либо рвать цепь.",
+      "properties": {
+        "pointer": {
+          "type": "string",
+          "pattern": "^(/([^/~]|~[01])*)+$",
+          "maxLength": 256,
+          "description": "JSON Pointer (RFC 6901) на удалённое поле."
+        },
+        "reason": { "enum": ["secret", "credential_material", "personal_data", "identifier", "oversized", "untrusted_content"] },
+        "value_hash": {
+          "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256",
+          "description": "Хеш удалённого значения. Допустим только при reason=identifier: у паролей и токенов энтропия мала либо формат предсказуем, и хеш восстанавливается перебором, то есть был бы утечкой, а не её заменой."
+        }
+      },
+      "required": ["pointer", "reason"],
+      "additionalProperties": false,
+      "if": {
+        "required": ["reason"],
+        "properties": { "reason": { "not": { "const": "identifier" } } }
+      },
+      "then": {
+        "not": { "required": ["value_hash"] }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "properties": {
+        "alg": { "const": "Ed25519" },
+        "key_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{86}$",
+          "description": "Подпись в base64url без выравнивания."
+        }
+      },
+      "required": ["alg", "key_id", "value"],
+      "additionalProperties": false
+    },
+    "policy_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\+[0-9a-f]{12}$",
+      "description": "Версия политики вместе с хешем её содержимого. Решение без указания версии невоспроизводимо: через месяц нельзя ответить, почему оно было именно таким."
+    },
+    "trace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$",
+      "description": "Идентификатор трассировки W3C. Связывает решение политики, выполнение и запись аудита в одну историю."
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:capability",
+  "capability_id": "cap:wipe-remote-volume",
+  "action": "file.delete",
+  "selector": { "kind": "path", "root_id": "transfer", "subpath": "", "recursive": true },
+  "granted_to": { "kind": "agent", "id": "agent:runner-7f3a" },
+  "granted_by": { "kind": "human", "id": "human:op-a1b2" },
+  "granted_at": "2026-08-30T09:20:00Z",
+  "expires_at": "2026-09-30T09:20:00Z",
+  "release": "B",
+  "supervision": "unattended_allowed",
+  "risk": "critical",
+  "approval_policy": "first_use",
+  "delegable": true,
+  "justification": "Попытка выдать критическое полномочие без наблюдения и с переуступкой."
+}

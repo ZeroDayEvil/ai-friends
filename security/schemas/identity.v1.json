@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-friends:schema:agent:v1:identity",
+  "title": "Запись субъекта",
+  "type": "object",
+  "description": "Четыре вида субъектов существуют раздельно потому, что у них разные способы подтверждения личности, разные сроки жизни и разные последствия компрометации. Сведение агента к учётной записи человека — самая дорогая ошибка в этой модели: она делает невозможным ответ на вопрос «это сделал человек или программа от его имени».",
+  "properties": {
+    "schema": { "const": "urn:ai-friends:schema:agent:v1:identity" },
+    "principal": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+    "display_name": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "state": {
+      "enum": ["active", "suspended", "revoked"],
+      "description": "revoked необратимо: идентификатор не переиспользуется. Иначе запись аудита трёхмесячной давности начала бы указывать на другого субъекта."
+    },
+    "created_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "updated_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "authentication": { "$ref": "#/$defs/authentication" },
+    "on_behalf_of": {
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref",
+      "description": "Человек, чьими правами действует агент. Для агента обязателен: агент без человека — это автономный субъект, а такие в релизе A не предусмотрены."
+    },
+    "home_device": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_id" },
+    "roles": {
+      "type": "array",
+      "items": { "enum": ["admin", "operator", "approver", "auditor", "executor"] },
+      "uniqueItems": true,
+      "maxItems": 5,
+      "description": "Роль не даёт полномочий сама по себе: она лишь входит в правило политики. Полномочие всегда выражается capability, иначе появляется второй, скрытый источник прав."
+    },
+    "os_account": { "$ref": "#/$defs/os_account" },
+    "enrollment": { "$ref": "#/$defs/enrollment" },
+    "agent_profile": { "$ref": "#/$defs/agent_profile" }
+  },
+  "required": ["schema", "principal", "display_name", "state", "created_at", "authentication"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "principal": { "properties": { "kind": { "const": "human" } }, "required": ["kind"] } }, "required": ["principal"] },
+      "then": {
+        "properties": { "authentication": { "properties": { "method": { "enum": ["cf-access", "local-password"] } } } },
+        "not": { "anyOf": [{ "required": ["on_behalf_of"] }, { "required": ["agent_profile"] }, { "required": ["enrollment"] }, { "required": ["os_account"] }] }
+      }
+    },
+    {
+      "if": { "properties": { "principal": { "properties": { "kind": { "const": "agent" } }, "required": ["kind"] } }, "required": ["principal"] },
+      "then": {
+        "required": ["on_behalf_of", "agent_profile"],
+        "properties": {
+          "on_behalf_of": { "properties": { "kind": { "const": "human" } } },
+          "authentication": { "properties": { "method": { "const": "control-plane-token" } } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "principal": { "properties": { "kind": { "const": "device" } }, "required": ["kind"] } }, "required": ["principal"] },
+      "then": {
+        "required": ["enrollment"],
+        "properties": { "authentication": { "properties": { "method": { "const": "mtls" } } } }
+      }
+    },
+    {
+      "if": { "properties": { "principal": { "properties": { "kind": { "const": "service" } }, "required": ["kind"] } }, "required": ["principal"] },
+      "then": {
+        "required": ["os_account"],
+        "properties": { "authentication": { "properties": { "method": { "enum": ["mtls", "os-account"] } } } }
+      }
+    }
+  ],
+  "$defs": {
+    "authentication": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "enum": ["cf-access", "local-password", "control-plane-token", "mtls", "os-account", "pairing-code"]
+        },
+        "issuer": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Издатель подтверждения личности. Для cf-access — домен команды Access. Проверяется точным сравнением, а не вхождением подстроки."
+        },
+        "audience": { "type": "string", "maxLength": 256 },
+        "algorithms": {
+          "type": "array",
+          "items": { "enum": ["RS256", "ES256", "EdDSA"] },
+          "minItems": 1,
+          "maxItems": 3,
+          "description": "Список алгоритмов задаётся явно. Без этого токен, подписанный HMAC с публичным ключом в качестве секрета, прошёл бы проверку."
+        },
+        "mfa": { "type": "boolean" },
+        "subject_hint": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Человекочитаемый идентификатор у поставщика личности, например почта. Отдельно от principal.id потому, что подлежит редактированию в выгрузках журнала и может измениться, не меняя субъекта."
+        },
+        "trusted_only_when": {
+          "enum": ["direct_origin_closed", "always"],
+          "description": "Для cf-access допустимо только direct_origin_closed. Заголовок с личностью подделывается тривиально, поэтому доверять ему можно лишь при доказанной недостижимости приложения в обход туннеля."
+        }
+      },
+      "required": ["method"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "method": { "const": "cf-access" } }, "required": ["method"] },
+          "then": {
+            "required": ["issuer", "audience", "algorithms", "trusted_only_when"],
+            "properties": { "trusted_only_when": { "const": "direct_origin_closed" } }
+          }
+        }
+      ]
+    },
+    "os_account": {
+      "type": "object",
+      "description": "Учётная запись Windows, от имени которой работает служба. Разные службы — разные записи: два процесса одного пользователя в Windows являются одним субъектом безопасности, и разделение по процессам не даёт границы.",
+      "properties": {
+        "name": { "type": "string", "pattern": "^[A-Za-z0-9_.$-]{1,64}$" },
+        "kind": { "enum": ["virtual_service_account", "gmsa", "local_user", "managed_local_user"] },
+        "privileged": { "const": false },
+        "denied_privileges": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "SeDebugPrivilege",
+              "SeBackupPrivilege",
+              "SeRestorePrivilege",
+              "SeTakeOwnershipPrivilege",
+              "SeImpersonatePrivilege",
+              "SeAssignPrimaryTokenPrivilege",
+              "SeLoadDriverPrivilege",
+              "SeTcbPrivilege",
+              "SeSecurityPrivilege",
+              "SeManageVolumePrivilege",
+              "SeCreateSymbolicLinkPrivilege"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "can_write": {
+          "type": "array",
+          "items": { "enum": ["policy", "audit", "config", "credentials", "app_binaries", "startup", "work_root", "quarantine_root"] },
+          "uniqueItems": true,
+          "description": "Явный список того, куда учётной записи разрешена запись. Для исполнителя допустимы только work_root и quarantine_root."
+        }
+      },
+      "required": ["name", "kind", "privileged", "can_write"],
+      "additionalProperties": false
+    },
+    "enrollment": {
+      "type": "object",
+      "description": "Регистрация устройства. Код сопряжения одноразовый и короткоживущий, сертификат выпускается внутренним центром сертификации на закрытый ключ, не покидающий устройство.",
+      "properties": {
+        "enrolled_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+        "enrolled_by": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+        "certificate_thumbprint": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
+        "key_storage": {
+          "enum": ["tpm", "software"],
+          "description": "software допустим только на время наладки: ключ, лежащий файлом, уносится вместе с диском и делает сопряжение устройства неотличимым от копии."
+        },
+        "certificate_expires_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+        "platform": { "enum": ["windows", "linux"] }
+      },
+      "required": ["enrolled_at", "enrolled_by", "certificate_thumbprint", "key_storage", "certificate_expires_at", "platform"],
+      "additionalProperties": false
+    },
+    "agent_profile": {
+      "type": "object",
+      "properties": {
+        "runtime": { "enum": ["mcp_client", "workflow_runner", "browser_worker"] },
+        "model_hint": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Справочное поле для журнала. Правами не управляет: полномочия агента не должны зависеть от того, какая модель за ним стоит."
+        },
+        "max_session_seconds": { "type": "integer", "minimum": 60, "maximum": 3600 },
+        "supervision": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/supervision" },
+        "release": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/release" },
+        "accepts_provenance": {
+          "type": "array",
+          "items": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/provenance" },
+          "uniqueItems": true,
+          "minItems": 1,
+          "description": "Из каких источников агенту разрешено принимать данные вообще. Браузерному работнику web разрешён, оркестратору сценариев — нет."
+        }
+      },
+      "required": ["runtime", "max_session_seconds", "supervision", "release", "accepts_provenance"],
+      "additionalProperties": false
+    }
+  }
+}

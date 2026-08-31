@@ -1,0 +1,258 @@
+{
+  "schema": "electerm-package-audit/1",
+  "generated": "2026-08-30",
+  "mode": "static-only",
+  "package": {
+    "name": "@electerm/electerm-react",
+    "version": "5.3.15",
+    "purl": "pkg:npm/%40electerm/electerm-react@5.3.15",
+    "role": "Исходники React-компонентов браузерного UI electerm; в дереве electerm-web отсутствуют и подставляются из npm."
+  },
+  "registry": {
+    "official_metadata_url": "https://registry.npmjs.org/@electerm%2felecterm-react/5.3.15",
+    "official_package_url": "https://registry.npmjs.org/@electerm/electerm-react",
+    "tarball_url": "https://registry.npmjs.org/@electerm/electerm-react/-/electerm-react-5.3.15.tgz",
+    "tarball_media_type": "application/octet-stream",
+    "tarball_content_length": 423516,
+    "attestations_url": "https://registry.npmjs.org/-/npm/v1/attestations/@electerm%2felecterm-react@5.3.15",
+    "mirrors_used": [],
+    "note": "Метаданные и тарбол получены только с registry.npmjs.org, без редиректов на другие хосты."
+  },
+  "integrity": {
+    "published_sri": "sha512-U25ZSP3ojJvTIllKM7iIjuDn00xHu1G9bJUTtGao79xYCPOr6ch6P3asJFe/ZC7LtrQEv8o45xojWdf1080qmQ==",
+    "published_shasum_sha1": "cb92ab7edb38952c3be66c8783bc26a5c667ea97",
+    "computed_sha512_base64": "U25ZSP3ojJvTIllKM7iIjuDn00xHu1G9bJUTtGao79xYCPOr6ch6P3asJFe/ZC7LtrQEv8o45xojWdf1080qmQ==",
+    "computed_sha512_hex": "536e5948fde88c9bd322594a33b8888ee0e7d34c47bb51bd6c9513b466a8efdc5808f3abe9c87a3f76ac2457bf642ecbb6b404bfca38e71a2359d7f5d3cd2a99",
+    "computed_sha256_hex": "ee270301dbed4fc126ef8184adedafa9f345a0c6a00894acd5d764ab96a0af6e",
+    "computed_sha1_hex": "cb92ab7edb38952c3be66c8783bc26a5c667ea97",
+    "sri_match": true,
+    "shasum_match": true,
+    "content_length_match": true,
+    "unpacked_size_match": true,
+    "verified_by": "scripts/security/inspect-npm-tarball.mjs"
+  },
+  "license": {
+    "declared_in_package_json": "MIT",
+    "license_file": "package/LICENSE",
+    "license_file_text": "The MIT License (MIT), Copyright (c) since 2017~ ZHAO Xudong <zxdong@gmail.com>",
+    "registry_metadata": "MIT",
+    "github_api_spdx": "MIT",
+    "consistent": true,
+    "copyleft": false,
+    "vendoring_allowed_by_license": true
+  },
+  "source_provenance": {
+    "repository": "https://github.com/electerm/electerm",
+    "ref": "refs/tags/v5.3.15",
+    "commit": "ba923cd412664ec5cd0b630548f74a7fc59069c8",
+    "confidence": "high",
+    "evidence": [
+      "npm-метаданные версии: gitHead = ba923cd412664ec5cd0b630548f74a7fc59069c8",
+      "SLSA provenance v1 (in-toto): subject.digest.sha512 совпадает с вычисленным SHA-512 тарбола",
+      "SLSA provenance v1: resolvedDependencies[0].uri = git+https://github.com/electerm/electerm@refs/tags/v5.3.15, digest.gitCommit = ba923cd412664ec5cd0b630548f74a7fc59069c8",
+      "SLSA provenance v1: workflow .github/workflows/electerm-react-publish.yml, event_name = release, builder = github-hosted runner",
+      "GitHub API repos/electerm/electerm/git/ref/tags/v5.3.15 -> object.sha = ba923cd412664ec5cd0b630548f74a7fc59069c8 (type commit)",
+      "GitHub API repos/electerm/electerm: id = 106087444, owner.id = 32591856 совпадают с internalParameters.github в аттестации",
+      "Публикация выполнена trusted publisher (OIDC, npm-oidc-no-reply@github.com), подпись реестра keyid SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+    ],
+    "unresolved_gaps": [
+      "Криптографическая верификация подписи Sigstore/Fulcio самой аттестации не выполнялась: для этого нужен внешний верификатор, а по правилам аудита сторонний исполняемый код не запускался. Проверено соответствие содержимого аттестации, а не её подпись.",
+      "Побайтовое сравнение содержимого тарбола с деревом репозитория на коммите ba923cd не выполнялось: пакет собирается из подкаталога исходников electerm, соответствие путей 1:1 не подтверждено.",
+      "Воспроизводимость сборки не проверялась: публикация идёт через GitHub Actions, локальная пересборка потребовала бы запуска чужих скриптов."
+    ]
+  },
+  "supply_chain": {
+    "install_scripts": false,
+    "scripts_field_present": false,
+    "dependencies": null,
+    "peer_dependencies": null,
+    "bundled_dependencies": null,
+    "note": "В package.json нет ни одного lifecycle-скрипта и ни одной объявленной зависимости: пакет поставляет только исходный JSX/JS/Stylus, сборку и зависимости обеспечивает потребитель (electerm-web)."
+  },
+  "contents": {
+    "entry_count": 529,
+    "entry_types": {
+      "file": 529,
+      "directory": 0,
+      "symlink": 0,
+      "hardlink": 0,
+      "chardev": 0,
+      "blockdev": 0,
+      "fifo": 0
+    },
+    "entry_classes": {
+      "source": 528,
+      "data": 1,
+      "generated": 0,
+      "minified": 0,
+      "binary": 0
+    },
+    "by_extension": {
+      ".jsx": 299,
+      ".js": 165,
+      ".styl": 60,
+      ".json": 1,
+      ".md": 1,
+      ".mjs": 1,
+      ".pug": 1,
+      "(none)": 1
+    },
+    "unpacked_bytes": 1633407,
+    "archive_safety": {
+      "path_traversal_entries": 0,
+      "absolute_path_entries": 0,
+      "drive_letter_entries": 0,
+      "link_entries": 0,
+      "device_entries": 0,
+      "setuid_setgid_entries": 0,
+      "violations": []
+    },
+    "note": "Минифицированных, сгенерированных и бинарных артефактов нет: весь код читаем как исходный. Единственная не-JS запись -- шаблон client/views/index.pug."
+  },
+  "external_urls": {
+    "distinct_hosts": 43,
+    "operational": [
+      { "url": "https://api.atlascloud.ai/v1", "where": "client/common/default-setting.js:69", "purpose": "AI по умолчанию", "required": false },
+      { "url": "https://ai.electerm.org/api/ai", "where": "client/components/ai/ai-config.jsx:151", "purpose": "AI-шлюз вендора", "required": false },
+      { "url": "https://api.apismart.ai/v1", "where": "client/components/ai/ai-config-props.js:25", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://api.apimart.ai/v1", "where": "client/components/ai/ai-config-props.js:33", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://api.deepseek.com/v1", "where": "client/components/ai/ai-config-props.js:41", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://api.openai.com/v1", "where": "client/components/ai/ai-config-props.js:49", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://openrouter.ai/api/v1", "where": "client/components/ai/ai-config-props.js:57", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://api.orcarouter.ai/v1", "where": "client/components/ai/ai-config-props.js:65", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://generativelanguage.googleapis.com/v1beta/openai", "where": "client/components/ai/ai-config-props.js:73", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://api.groq.com/openai/v1", "where": "client/components/ai/ai-config-props.js:81", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://api.together.xyz/v1", "where": "client/components/ai/ai-config-props.js:89", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://api.mistral.ai/v1", "where": "client/components/ai/ai-config-props.js:97", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://api.x.ai/v1", "where": "client/components/ai/ai-config-props.js:105", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://api.perplexity.ai", "where": "client/components/ai/ai-config-props.js:113", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://api.moonshot.cn/v1", "where": "client/components/ai/ai-config-props.js:121", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://api.siliconflow.cn/v1", "where": "client/components/ai/ai-config-props.js:129", "purpose": "AI-провайдер", "required": false },
+      { "url": "https://sync.electerm.org/api/sync", "where": "client/components/setting-sync/setting-sync-form.jsx:70", "purpose": "облачная синхронизация закладок", "required": false },
+      { "url": "https://gitee.com/github-zxdong262/electerm/raw/gh-pages", "where": "client/common/constants.js:206", "purpose": "канал обновлений (зеркало)", "required": false },
+      { "url": "https://electerm-mirror.html5beta.com", "where": "client/common/update-check.js:77", "purpose": "зеркало загрузки релизов", "required": false },
+      { "url": "https://master.dl.sourceforge.net/project/electerm.mirror", "where": "client/common/update-check.js:81", "purpose": "зеркало загрузки релизов", "required": false },
+      { "url": "https://electerm-store.html5beta.com", "where": "client/common/update-check.js:83", "purpose": "зеркало загрузки релизов", "required": false },
+      { "url": "https://theme.electerm.org", "where": "client/components/theme/theme-form.jsx:305", "purpose": "каталог тем", "required": false },
+      { "url": "https://cloud.electerm.org", "where": "client/components/sidebar/info-modal.jsx:144", "purpose": "облачный сервис вендора", "required": false },
+      { "url": "https://raw.githubusercontent.com", "where": "client/components/rdp/code-scan.js:1", "purpose": "ссылка на первоисточник в комментарии", "required": false }
+    ],
+    "documentation_only_hosts": [
+      "github.com", "img.shields.io", "electerm.org", "electerm.github.io",
+      "icon-sets.iconify.design", "twitter.com", "standardjs.com",
+      "snapcraft.io", "www.microsoft.com", "www.atlascloud.ai", "freefrontend.com"
+    ],
+    "placeholder_hosts": [
+      "xx.com", "proxy.example.com:3128", "proxy-server-over-tcp.com:3128",
+      "proxy-server-over-tls.com:3129", "your-webdav-server.com",
+      "127.0.0.1:8080", "127.0.0.1:5678"
+    ],
+    "note": "Телеметрии и аналитики не обнаружено: нет ни одного безусловного исходящего запроса при старте. Все внешние адреса включаются только явными функциями (AI, sync, проверка обновлений, темы)."
+  },
+  "dangerous_api_inventory": {
+    "absent": [
+      "eval()",
+      "new Function()",
+      "Function(string)",
+      "document.write()",
+      "insertAdjacentHTML()",
+      "XMLHttpRequest",
+      "child_process",
+      "window.open()",
+      "document.domain",
+      "window.opener"
+    ],
+    "present": [
+      { "api": "dynamic import()", "count": 24, "files": 10, "assessment": "статические литеральные пути (code splitting), пользовательский ввод не участвует" },
+      { "api": "localStorage", "count": 13, "files": 3, "assessment": "ключи AI-истории и настроек; в веб-режиме без шифрования" },
+      { "api": "fetch()", "count": 12, "files": 5, "assessment": "AI, проверка обновлений, тест соединения, чтение файлов" },
+      { "api": "readClipboard()", "count": 9, "files": 6, "assessment": "включая автоматическое чтение по OSC 52 из удалённого терминала" },
+      { "api": "addEventListener('message')", "count": 8, "files": 7, "assessment": "worker и WebSocket-каналы; проверка origin отсутствует, но это собственный worker, а не window.postMessage от третьей стороны" },
+      { "api": "btoa()/atob()", "count": 7, "files": 4, "assessment": "OSC 52, XOR-обфускация localStorage, base64-обёртка фоновых команд" },
+      { "api": "element.innerHTML =", "count": 5, "files": 4, "assessment": "только запись CSS в теги style; HTML не вставляется" },
+      { "api": "writeClipboard()", "count": 4, "files": 3, "assessment": "в том числе запись из удалённого терминала по OSC 52" },
+      { "api": "shell eval в шаблонной строке", "count": 3, "files": 2, "assessment": "mcp-handler.js:982 и terminal/shell.js:137 -- сборка команд оболочки" },
+      { "api": "new WebSocket", "count": 3, "files": 2, "assessment": "ws:// без TLS, токен в query" },
+      { "api": ".postMessage()", "count": 2, "files": 2, "assessment": "обмен с собственным web worker" },
+      { "api": "require()", "count": 1, "files": 1, "assessment": "client/common/pre.js, мост preload" },
+      { "api": "dangerouslySetInnerHTML", "count": 1, "files": 1, "assessment": "sys-menu/menu-btn.jsx:206, статический SVG-логотип из модуля" },
+      { "api": "registerOscHandler(52)", "count": 1, "files": 1, "assessment": "чтение и запись системного буфера обмена по команде удалённого хоста" },
+      { "api": "iframe", "count": 1, "files": 1, "assessment": "web/web-session.jsx:115, без атрибута sandbox" }
+    ]
+  },
+  "mcp_contract": {
+    "activation": "client/store/widgets.js:20 -- runWidget('mcp-server') вызывает store.initMcpHandler()",
+    "transport_in": "window.pre.ipcOnEvent('mcp-request', {requestId, action:'tool-call', data:{toolName, args}})",
+    "transport_out": "window.api.sendMcpResponse({requestId, result|error})",
+    "dispatcher": "client/store/mcp-handler.js:59 Store.prototype.handleMcpToolCall",
+    "tool_names_dispatched": 43,
+    "tools_with_in_package_schema": 25,
+    "tools_without_in_package_schema": 18,
+    "schema_source_in_package": "client/components/ai/agent-tools.js (схемы для встроенного AI-агента)",
+    "shared_execution_backend": "client/components/ai/agent-tools.js:448 executeToolCall вызывает те же store.mcp* методы, что и MCP-виджет",
+    "dead_tools": [
+      "list_quick_commands",
+      "add_quick_command",
+      "run_quick_command",
+      "delete_quick_command"
+    ],
+    "dead_tools_note": "Ветки switch (mcp-handler.js:95-104) вызывают методы, реализации которых закомментированы (mcp-handler.js:357-408). Вызов приводит к TypeError, который перехватывается и возвращается как error. Контракт сервера шире, чем реализация рендерера.",
+    "server_side_gap": "JSON-схемы аргументов MCP-инструментов в этом пакете отсутствуют: их объявляет виджет mcp-server на стороне main-процесса electerm-web. Рендерер не валидирует аргументы самостоятельно, поэтому вся защита аргументов делегирована за пределы аудируемого пакета."
+  },
+  "findings": [
+    { "id": "ER-01", "severity": "high", "confidence": "high", "component": "terminal/osc52", "where": "client/components/terminal/osc52-addon.js:37,70,83-93", "title": "OSC 52 чтение буфера обмена включено безусловно", "impact": "Удалённый хост, выведя ESC]52;c;? в поток терминала, получает содержимое системного буфера обмена пользователя.", "action": "remove-read-path" },
+    { "id": "ER-02", "severity": "high", "confidence": "high", "component": "mcp/background-tasks", "where": "client/store/mcp-handler.js:1060-1062", "title": "Инъекция команд через аргумент lines инструмента get_background_task_log", "impact": "args.lines подставляется в tail -n ${lines} без приведения к числу; формально read-only инструмент даёт выполнение произвольной команды.", "action": "harden" },
+    { "id": "ER-03", "severity": "high", "confidence": "high", "component": "mcp/zmodem", "where": "client/store/mcp-handler.js:1372-1373", "title": "Инъекция команд через имена файлов в zmodem_download", "impact": "remoteFiles оборачиваются только в двойные кавычки, что не защищает от подстановки команд и раскрытия переменных.", "action": "harden" },
+    { "id": "ER-04", "severity": "high", "confidence": "high", "component": "mcp/bookmarks", "where": "client/store/mcp-handler.js:267-303 против 522-541", "title": "Блок-лист опасных свойств применяется только в open_tab", "impact": "add_bookmark и edit_bookmark не вызывают stripDangerousTabProps, поэтому AI/MCP может сохранить закладку с runScripts/execLinux/setEnv и затем выполнить её через open_bookmark.", "action": "harden" },
+    { "id": "ER-05", "severity": "high", "confidence": "high", "component": "web-tabs", "where": "client/components/web/web-session.jsx:13,105-116 и client/components/bookmark-form/fix-bookmark-default.js:90-111", "title": "XSS в origin приложения через web-вкладку", "impact": "validateBookmarkData проверяет только непустоту url, а urlRegex пропускает схему javascript с двумя слэшами и переносом строки; такой url попадает в iframe src без sandbox и исполняется в origin приложения. Цепочка достижима из MCP-инструмента open_tab.", "action": "harden" },
+    { "id": "ER-06", "severity": "high", "confidence": "high", "component": "mcp/zmodem", "where": "client/store/mcp-handler.js:1323,1366 и client/components/terminal/transfer-client-base.js:179-196,228-235", "title": "Обход нативных диалогов выбора файла через e2e-хуки", "impact": "MCP-инструменты выставляют window._apiControlSelectFile и window._apiControlSelectFolder -- хуки, задокументированные как средство e2e-тестирования, -- и передают произвольные локальные пути без участия пользователя.", "action": "remove-or-gate" },
+    { "id": "ER-07", "severity": "medium", "confidence": "high", "component": "mcp/sftp", "where": "client/store/mcp-handler.js:1216,1261", "title": "Опасное значение по умолчанию для конфликтов передачи", "impact": "conflictPolicy по умолчанию mergeOrOverwriteAll: перезапись файлов на обеих сторонах без запроса.", "action": "harden" },
+    { "id": "ER-08", "severity": "high", "confidence": "high", "component": "storage", "where": "client/common/safe-local-storage.js:23-55,101-132", "title": "Мнимое шифрование localStorage и открытое хранение в веб-режиме", "impact": "Префикс enc1 -- это XOR повторяющимся ключом плюс base64, то есть обфускация. При window.et.isWebApp безопасные функции вырождаются в обычный setItem, то есть в браузерной поставке данные лежат открытым текстом.", "action": "harden" },
+    { "id": "ER-09", "severity": "high", "confidence": "high", "component": "transport", "where": "client/entry/worker.js:15, client/components/terminal/terminal.jsx:1794, rdp/rdp-session.jsx:125, vnc/vnc-session.jsx:104, spice/spice-session.jsx:122", "title": "WebSocket по ws:// с токеном в query-строке", "impact": "Сессионный токен передаётся без TLS и оседает в логах прокси и сервера; в браузере под HTTPS это ещё и mixed content.", "action": "harden" },
+    { "id": "ER-10", "severity": "medium", "confidence": "medium", "component": "mcp/background-tasks", "where": "client/store/mcp-handler.js:975-983", "title": "Предсказуемые временные файлы в /tmp на удалённом хосте", "impact": "Пути вида /tmp/electerm-bg-<время>-<счётчик>.log предсказуемы; на многопользовательском хосте локальный злоумышленник может заранее создать симлинк и получить перезапись чужого файла при перенаправлении вывода.", "action": "harden" },
+    { "id": "ER-11", "severity": "low", "confidence": "high", "component": "mcp/background-tasks", "where": "client/store/mcp-handler.js:981", "title": "btoa() падает на не-Latin1 командах", "impact": "run_background_command с кириллицей или другими не-Latin1 символами бросает InvalidCharacterError вместо запуска задачи.", "action": "harden" },
+    { "id": "ER-12", "severity": "low", "confidence": "high", "component": "mcp/quick-commands", "where": "client/store/mcp-handler.js:95-104,357-408", "title": "Четыре инструмента объявлены, но не реализованы", "impact": "list/add/run/delete_quick_command вызывают несуществующие методы и всегда возвращают ошибку: контракт сервера и рендерера рассинхронизирован.", "action": "align-contract" },
+    { "id": "ER-13", "severity": "medium", "confidence": "high", "component": "network-defaults", "where": "client/components/ai/ai-config-props.js:17-129, client/common/default-setting.js:69, client/common/update-check.js:77-83, client/common/constants.js:206,229", "title": "Внешние AI, sync и update-эндпоинты в значениях по умолчанию", "impact": "16 внешних AI-провайдеров, облачный sync и три зеркала обновлений заданы дефолтами; при включении функции пользовательские данные и текст команд уходят за периметр.", "action": "replace-with-internal" },
+    { "id": "ER-14", "severity": "medium", "confidence": "high", "component": "theming", "where": "client/components/bg/custom-css.jsx:16-17", "title": "Санитайзер пользовательского CSS вырезает только @import", "impact": "Остальные конструкции проходят: обращение по url() в свойствах и селекторы по атрибутам позволяют вытягивать данные и обращаться наружу из CSS.", "action": "harden" },
+    { "id": "ER-15", "severity": "medium", "confidence": "high", "component": "mcp/settings", "where": "client/store/mcp-handler.js:1120-1129", "title": "get_settings отдаёт конфигурацию по списку исключений", "impact": "Исключены только apiKeyAI и syncSetting; любое новое чувствительное поле конфигурации автоматически станет доступно AI/MCP.", "action": "harden" },
+    { "id": "ER-16", "severity": "high", "confidence": "high", "component": "web-tabs-desktop", "where": "client/components/web/web-session.jsx:125-128", "title": "webview с disablewebsecurity и allowpopups", "impact": "В десктопной ветке отключается политика одного источника и разрешаются всплывающие окна. В браузерной поставке эта ветка не используется, но код присутствует в пакете.", "action": "remove" },
+    { "id": "ER-17", "severity": "medium", "confidence": "high", "component": "mcp/contract", "where": "client/store/mcp-handler.js:59-218", "title": "Схемы аргументов MCP отсутствуют в пакете", "impact": "18 из 43 имён инструментов не имеют схемы внутри пакета; рендерер не валидирует аргументы сам, поэтому ER-02 и ER-03 не перекрываются ничем внутри аудируемой границы.", "action": "align-contract" },
+    { "id": "ER-18", "severity": "medium", "confidence": "high", "component": "mcp/sftp", "where": "client/store/mcp-handler.js:1173-1181,1204-1247", "title": "Произвольные пути в sftp_read_file и sftp_upload", "impact": "Инструменты по назначению читают и отправляют любые пути, включая ключи и конфигурацию; ограничение путей должно вводиться политикой.", "action": "policy-gate" },
+    { "id": "ER-19", "severity": "low", "confidence": "high", "component": "ai/guardrails", "where": "client/components/ai/ai-guardrails.js:4-10", "title": "Guardrails действуют только на уровне промпта", "impact": "window.et.mandatoryGuardrails дописывается в системную роль и не является техническим ограничением на вызов инструментов.", "action": "policy-gate" }
+  ],
+  "verdict_by_component": [
+    { "component": "package-as-a-whole", "verdict": "pin", "rationale": "Происхождение подтверждено до коммита, лицензия MIT, install-скриптов и бинарников нет. Вендорить можно только с правками из findings." },
+    { "component": "mcp-handler (store/mcp-handler.js)", "verdict": "replace", "rationale": "ER-02, ER-03, ER-04, ER-06, ER-07, ER-10, ER-11, ER-15. Ядро AI/MCP-автоматизации сохраняем, но экранирование, валидацию и блок-листы переписываем." },
+    { "component": "ai agent tools (components/ai/agent-tools.js, agent.js)", "verdict": "keep", "rationale": "Схемы и маршрутизация корректны; риски наследуются от общего backend store.mcp* и чинятся там же." },
+    { "component": "osc52 clipboard addon", "verdict": "replace", "rationale": "ER-01: путь чтения буфера обмена вырезать, запись оставить за явной настройкой." },
+    { "component": "web session tabs", "verdict": "remove", "rationale": "ER-05 и ER-16: браузерные вкладки внутри терминального клиента дают XSS в origin приложения и не нужны для целевого сценария." },
+    { "component": "ai provider defaults (ai-config-props.js, default-setting.js)", "verdict": "replace", "rationale": "ER-13: оставить только внутренний эндпоинт." },
+    { "component": "sync (setting-sync)", "verdict": "replace", "rationale": "ER-13: перевести на self-hosted sync." },
+    { "component": "update-check (common/update-check.js)", "verdict": "remove", "rationale": "ER-13: зеркала обновлений вне официального канала." },
+    { "component": "safe-local-storage", "verdict": "replace", "rationale": "ER-08: XOR не является шифрованием, в веб-режиме шифрования нет вовсе." },
+    { "component": "ws transport (entry/worker.js и *-session.jsx)", "verdict": "replace", "rationale": "ER-09: перевести на wss и убрать токен из query-строки." },
+    { "component": "custom css / theming", "verdict": "replace", "rationale": "ER-14: заменить блок-лист на разбор и белый список свойств." },
+    { "component": "terminal core, sftp ui, tabs, settings ui", "verdict": "keep", "rationale": "Опасных примитивов не найдено; это основная полезная часть пакета." }
+  ],
+  "final_verdict": {
+    "decision": "pin-and-harden",
+    "vendoring_blockers": ["ER-01", "ER-02", "ER-03", "ER-04", "ER-05", "ER-06", "ER-08", "ER-09", "ER-16"],
+    "summary": "Пакет подлинный, происхождение доказано до коммита ba923cd, лицензия MIT, install-скриптов, бинарников и минифицированного кода нет. Вендоринг блокирует не поставка, а дефекты браузерной поверхности: чтение буфера обмена по OSC 52, две инъекции команд в MCP-слое, обход блок-листа опасных свойств через закладки, XSS через web-вкладку, обход диалогов выбора файла, отсутствие шифрования секретов в веб-режиме и ws:// с токеном в URL."
+  },
+  "audit_method": {
+    "no_install": true,
+    "no_package_scripts_executed": true,
+    "no_downloaded_code_executed": true,
+    "extraction_target": "временный каталог вне репозитория",
+    "payload_committed": false,
+    "tooling": "scripts/security/inspect-npm-tarball.mjs (собственный код репозитория, без сторонних зависимостей) плюс статическое чтение файлов",
+    "coverage": {
+      "entries_inventoried": 529,
+      "entries_hashed": 529,
+      "files_read_in_full": 12,
+      "files_pattern_scanned": 529,
+      "line_by_line_coverage_claimed": false,
+      "note": "Полностью прочитаны mcp-handler.js, widgets.js, agent-tools.js (маршрутизация и схемы), safe-local-storage.js, worker.js, osc52-addon.js, custom-css.jsx, web-session.jsx, fix-bookmark-default.js, ai-guardrails.js, package.json, LICENSE. Остальные файлы покрыты сплошным шаблонным поиском по URL и опасным API, а не построчным чтением."
+    }
+  }
+}

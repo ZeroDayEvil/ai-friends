@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $modulePath = Join-Path $repoRoot 'scripts\build\Build.Primitives.psm1'
 $buildScriptPath = Join-Path $repoRoot 'scripts\build\Build.ps1'
-$isWindows = $env:OS -eq 'Windows_NT'
+$runningOnWindows = $env:OS -eq 'Windows_NT'
 
 if (-not (Test-Path -LiteralPath $modulePath -PathType Leaf)) {
     throw "Module file not found: $modulePath"
@@ -103,6 +103,90 @@ function Assert-True {
     if (-not $Condition) {
         throw $Message
     }
+}
+
+function New-OrdinalStringSet {
+    return New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
+}
+
+function New-EmbeddedSignedScriptFixture {
+        if (-not $runningOnWindows) {
+            return (New-SkipResult -Reason 'Authenticode tests require Windows.')
+        }
+
+        $roots = @(
+            (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\Modules'),
+            (Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules')
+        )
+
+        foreach ($root in $roots) {
+            if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+                continue
+            }
+
+            foreach ($scriptFile in (Get-ChildItem -LiteralPath $root -Recurse -File -Include '*.ps1', '*.psm1', '*.psd1' -ErrorAction SilentlyContinue)) {
+                $signature = Get-AuthenticodeSignature -FilePath $scriptFile.FullName
+                if ($null -eq $signature -or $signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
+                    continue
+                }
+
+                $signatureType = [string]$signature.SignatureType
+                if (-not $signatureType.Equals('Authenticode', [System.StringComparison]::OrdinalIgnoreCase)) {
+                    continue
+                }
+
+                return [PSCustomObject]@{
+                    Path          = $scriptFile.FullName
+                    Size          = [Int64]$scriptFile.Length
+                    Sha256        = Get-Sha256Hex -Path $scriptFile.FullName
+                    Thumbprint    = $signature.SignerCertificate.Thumbprint.ToUpperInvariant()
+                    Subject       = $signature.SignerCertificate.Subject
+                    SignatureType = $signatureType
+                }
+            }
+        }
+
+        return (New-SkipResult -Reason 'No embedded Authenticode-signed script fixture was found on this host.')
+}
+
+function Find-EmbeddedAuthenticodePeFixture {
+        if (-not $runningOnWindows) {
+            return (New-SkipResult -Reason 'Embedded-signed PE fixture requires Windows.')
+        }
+
+        $roots = @(
+            (Join-Path $env:SystemRoot 'System32'),
+            (Join-Path $env:SystemRoot 'SysWOW64')
+        )
+
+        foreach ($root in $roots) {
+            if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+                continue
+            }
+
+            foreach ($file in (Get-ChildItem -LiteralPath $root -Filter '*.exe' -File -ErrorAction SilentlyContinue)) {
+                $signature = Get-AuthenticodeSignature -FilePath $file.FullName
+                if ($null -eq $signature -or $signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
+                    continue
+                }
+
+                $signatureType = [string]$signature.SignatureType
+                if (-not $signatureType.Equals('Authenticode', [System.StringComparison]::OrdinalIgnoreCase)) {
+                    continue
+                }
+
+                return [PSCustomObject]@{
+                    Path          = $file.FullName
+                    Size          = [Int64]$file.Length
+                    Sha256        = Get-Sha256Hex -Path $file.FullName
+                    Thumbprint    = $signature.SignerCertificate.Thumbprint.ToUpperInvariant()
+                    Subject       = $signature.SignerCertificate.Subject
+                    SignatureType = $signatureType
+                }
+            }
+        }
+
+        return (New-SkipResult -Reason 'No embedded Authenticode-signed PE fixture was found on this host.')
 }
 
 function Invoke-Case {
@@ -283,10 +367,14 @@ try {
         Set-Content -LiteralPath $nfcPath -Value 'nfc' -Encoding UTF8 -NoNewline
         Set-Content -LiteralPath $nfdPath -Value 'nfd' -Encoding UTF8 -NoNewline
 
-        $names = Get-ChildItem -LiteralPath $scope -File | Select-Object -ExpandProperty Name
-        $distinctNames = @($names | Select-Object -Unique)
+        $names = @(Get-ChildItem -LiteralPath $scope -File | ForEach-Object { [string]$_.Name })
+        $distinctNames = New-OrdinalStringSet
+        foreach ($name in $names) {
+            $null = $distinctNames.Add($name)
+        }
+
         if ($distinctNames.Count -lt 2) {
-            return (New-SkipResult -Reason 'Filesystem does not preserve distinct NFC/NFD sibling names.')
+            return (New-SkipResult -Reason ("Filesystem does not preserve distinct NFC/NFD sibling names (ordinal distinct count={0})." -f $distinctNames.Count))
         }
 
         $manifestPath = Join-Path $tempRoot 'verify-nfc-nfd.json'
@@ -312,24 +400,33 @@ try {
         $scope = Join-Path $repo 'scope'
         [System.IO.Directory]::CreateDirectory($scope) | Out-Null
 
-        if ($isWindows) {
-            try {
-                & fsutil.exe file setCaseSensitiveInfo $scope enable | Out-Null
-            }
-            catch {
-            }
+        if (-not $runningOnWindows) {
+            return (New-SkipResult -Reason 'Case-sensitive Hook/hook collision test is Windows-specific.')
         }
+
+        $enableCaseOutput = @(& fsutil.exe file setCaseSensitiveInfo $scope enable 2>&1)
+        $enableCaseExit = $LASTEXITCODE
+        $queryCaseOutput = @(& fsutil.exe file queryCaseSensitiveInfo $scope 2>&1)
+        $queryCaseExit = $LASTEXITCODE
+        $queryCaseText = ($queryCaseOutput | ForEach-Object { "$_" }) -join ' '
+        $caseSensitivityEnabled = ($enableCaseExit -eq 0 -and $queryCaseExit -eq 0 -and $queryCaseText -match '(?i)enabled')
 
         $upperPath = Join-Path $scope 'Hook.ps1'
         $lowerPath = Join-Path $scope 'hook.ps1'
         Set-Content -LiteralPath $upperPath -Value 'upper' -Encoding ASCII -NoNewline
         Set-Content -LiteralPath $lowerPath -Value 'lower' -Encoding ASCII -NoNewline
 
-        $names = Get-ChildItem -LiteralPath $scope -File | Select-Object -ExpandProperty Name
-        $hasUpper = $names -contains 'Hook.ps1'
-        $hasLower = $names -contains 'hook.ps1'
-        if (-not ($hasUpper -and $hasLower)) {
-            return (New-SkipResult -Reason 'Filesystem does not support distinct Hook.ps1 and hook.ps1 in this directory.')
+        $nameSet = New-OrdinalStringSet
+        foreach ($name in (Get-ChildItem -LiteralPath $scope -File | ForEach-Object { [string]$_.Name })) {
+            $null = $nameSet.Add($name)
+        }
+
+        $hasUpper = $nameSet.Contains('Hook.ps1')
+        $hasLower = $nameSet.Contains('hook.ps1')
+        if ((-not $caseSensitivityEnabled) -or (-not ($hasUpper -and $hasLower))) {
+            $enableCaseText = ($enableCaseOutput | ForEach-Object { "$_" }) -join ' '
+            $reason = "Case-sensitive directory or ordinal file split unavailable. fsutil(set=$enableCaseExit, query=$queryCaseExit, queryText='$queryCaseText', setText='$enableCaseText'), hasUpper=$hasUpper, hasLower=$hasLower."
+            return (New-SkipResult -Reason $reason)
         }
 
         $manifestPath = Join-Path $tempRoot 'verify-case-collision.json'
@@ -472,7 +569,7 @@ try {
     }
 
     Invoke-Case -Name 'Hydrate rejects receipt path through junction' -Body {
-        if (-not $isWindows) {
+        if (-not $runningOnWindows) {
             return (New-SkipResult -Reason 'Junction test is Windows-specific.')
         }
 
@@ -602,30 +699,18 @@ try {
             -ExpectedMessage ("artifact 'artifact-one' hash mismatch: expected {0}, got {1}." -f $expectedHash.ToUpperInvariant(), $actualHash)
     }
 
-    Invoke-Case -Name 'Hydrate passes Authenticode signer and thumbprint checks' -Body {
-        if (-not $isWindows) {
-            return (New-SkipResult -Reason 'Authenticode tests require Windows.')
+    Invoke-Case -Name 'Hydrate passes embedded Authenticode signed script checks' -Body {
+        $signedScript = New-EmbeddedSignedScriptFixture
+        if ($null -ne $signedScript.PSObject.Properties['__skip'] -and $signedScript.__skip) {
+            return $signedScript
         }
 
-        $signedSource = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-        if (-not (Test-Path -LiteralPath $signedSource -PathType Leaf)) {
-            return (New-SkipResult -Reason 'Signed powershell.exe source file was not found.')
-        }
+        Assert-True -Condition ([string]$signedScript.SignatureType -ceq 'Authenticode') -Message ("Expected embedded script signature type 'Authenticode', got '{0}'." -f $signedScript.SignatureType)
 
-        $signature = Get-AuthenticodeSignature -FilePath $signedSource
-        if ($null -eq $signature -or $signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
-            return (New-SkipResult -Reason 'Signed powershell.exe does not have a valid Authenticode signature in this environment.')
-        }
-
-        $size = (Get-Item -LiteralPath $signedSource).Length
-        $sha256 = Get-Sha256Hex -Path $signedSource
-        $thumbprint = $signature.SignerCertificate.Thumbprint.ToUpperInvariant()
-        $subject = $signature.SignerCertificate.Subject
-
-        $manifest = New-ValidHydrateManifest -Id 'signed-powershell' -Url 'https://example.com/powershell.exe' -Destination 'signed/powershell.exe' -Size $size -Sha256 $sha256
+        $manifest = New-ValidHydrateManifest -Id 'signed-script' -Url 'https://example.com/signed-script.ps1' -Destination 'signed/script.ps1' -Size $signedScript.Size -Sha256 $signedScript.Sha256
         $manifest.artifacts[0].authenticode = @{
-            thumbprint = $thumbprint
-            subject = $subject
+            thumbprint = $signedScript.Thumbprint
+            subject = $signedScript.Subject
         }
 
         $manifestPath = Join-Path $tempRoot 'hydrate-authenticode-pass.json'
@@ -634,38 +719,25 @@ try {
         $staging = Join-Path $tempRoot 'staging-authenticode-pass'
         $downloader = {
             param($Artifact, $OutFile)
-            Copy-Item -LiteralPath $signedSource -Destination $OutFile -Force
+            Copy-Item -LiteralPath $signedScript.Path -Destination $OutFile -Force
             return [PSCustomObject]@{ ResponseUri = [System.Uri]$Artifact.Url }
         }
 
         $result = Invoke-Hydrate -ManifestPath $manifestPath -StagingDirectory $staging -Downloader $downloader
         Assert-True -Condition ($result.ArtifactCount -eq 1) -Message 'Expected one Authenticode-validated artifact.'
-        Assert-True -Condition (Test-Path -LiteralPath (Join-Path $staging 'signed\powershell.exe') -PathType Leaf) -Message 'Authenticode output file missing.'
+        Assert-True -Condition (Test-Path -LiteralPath (Join-Path $staging 'signed\script.ps1') -PathType Leaf) -Message 'Authenticode output file missing.'
     }
 
     Invoke-Case -Name 'Hydrate fails on Authenticode thumbprint mismatch' -Body {
-        if (-not $isWindows) {
-            return (New-SkipResult -Reason 'Authenticode tests require Windows.')
+        $signedScript = New-EmbeddedSignedScriptFixture
+        if ($null -ne $signedScript.PSObject.Properties['__skip'] -and $signedScript.__skip) {
+            return $signedScript
         }
 
-        $signedSource = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-        if (-not (Test-Path -LiteralPath $signedSource -PathType Leaf)) {
-            return (New-SkipResult -Reason 'Signed powershell.exe source file was not found.')
-        }
-
-        $signature = Get-AuthenticodeSignature -FilePath $signedSource
-        if ($null -eq $signature -or $signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
-            return (New-SkipResult -Reason 'Signed powershell.exe does not have a valid Authenticode signature in this environment.')
-        }
-
-        $size = (Get-Item -LiteralPath $signedSource).Length
-        $sha256 = Get-Sha256Hex -Path $signedSource
-        $subject = $signature.SignerCertificate.Subject
-
-        $manifest = New-ValidHydrateManifest -Id 'signed-thumbprint-mismatch' -Url 'https://example.com/powershell.exe' -Destination 'signed/powershell.exe' -Size $size -Sha256 $sha256
+        $manifest = New-ValidHydrateManifest -Id 'signed-thumbprint-mismatch' -Url 'https://example.com/signed-script.ps1' -Destination 'signed/script.ps1' -Size $signedScript.Size -Sha256 $signedScript.Sha256
         $manifest.artifacts[0].authenticode = @{
             thumbprint = '0000000000000000000000000000000000000000'
-            subject = $subject
+            subject = $signedScript.Subject
         }
 
         $manifestPath = Join-Path $tempRoot 'hydrate-authenticode-thumbprint-mismatch.json'
@@ -674,7 +746,7 @@ try {
         $staging = Join-Path $tempRoot 'staging-authenticode-thumbprint-mismatch'
         $downloader = {
             param($Artifact, $OutFile)
-            Copy-Item -LiteralPath $signedSource -Destination $OutFile -Force
+            Copy-Item -LiteralPath $signedScript.Path -Destination $OutFile -Force
             return [PSCustomObject]@{ ResponseUri = [System.Uri]$Artifact.Url }
         }
 
@@ -684,27 +756,14 @@ try {
     }
 
     Invoke-Case -Name 'Hydrate fails on Authenticode subject mismatch' -Body {
-        if (-not $isWindows) {
-            return (New-SkipResult -Reason 'Authenticode tests require Windows.')
+        $signedScript = New-EmbeddedSignedScriptFixture
+        if ($null -ne $signedScript.PSObject.Properties['__skip'] -and $signedScript.__skip) {
+            return $signedScript
         }
 
-        $signedSource = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-        if (-not (Test-Path -LiteralPath $signedSource -PathType Leaf)) {
-            return (New-SkipResult -Reason 'Signed powershell.exe source file was not found.')
-        }
-
-        $signature = Get-AuthenticodeSignature -FilePath $signedSource
-        if ($null -eq $signature -or $signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
-            return (New-SkipResult -Reason 'Signed powershell.exe does not have a valid Authenticode signature in this environment.')
-        }
-
-        $size = (Get-Item -LiteralPath $signedSource).Length
-        $sha256 = Get-Sha256Hex -Path $signedSource
-        $thumbprint = $signature.SignerCertificate.Thumbprint.ToUpperInvariant()
-
-        $manifest = New-ValidHydrateManifest -Id 'signed-subject-mismatch' -Url 'https://example.com/powershell.exe' -Destination 'signed/powershell.exe' -Size $size -Sha256 $sha256
+        $manifest = New-ValidHydrateManifest -Id 'signed-subject-mismatch' -Url 'https://example.com/signed-script.ps1' -Destination 'signed/script.ps1' -Size $signedScript.Size -Sha256 $signedScript.Sha256
         $manifest.artifacts[0].authenticode = @{
-            thumbprint = $thumbprint
+            thumbprint = $signedScript.Thumbprint
             subject = 'CN=Not The Real Signer'
         }
 
@@ -714,13 +773,69 @@ try {
         $staging = Join-Path $tempRoot 'staging-authenticode-subject-mismatch'
         $downloader = {
             param($Artifact, $OutFile)
-            Copy-Item -LiteralPath $signedSource -Destination $OutFile -Force
+            Copy-Item -LiteralPath $signedScript.Path -Destination $OutFile -Force
             return [PSCustomObject]@{ ResponseUri = [System.Uri]$Artifact.Url }
         }
 
         Assert-ThrowsError -Action { Invoke-Hydrate -ManifestPath $manifestPath -StagingDirectory $staging -Downloader $downloader } `
             -ExpectedId 'Build.Authenticode.SubjectMismatch' `
             -ExpectedMessage "artifact 'signed-subject-mismatch' Authenticode subject mismatch."
+    }
+
+    Invoke-Case -Name 'Hydrate rejects declared script extension for embedded signed PE content' -Body {
+        $signedPe = Find-EmbeddedAuthenticodePeFixture
+        if ($null -ne $signedPe.PSObject.Properties['__skip'] -and $signedPe.__skip) {
+            return $signedPe
+        }
+
+        Assert-True -Condition ([string]$signedPe.SignatureType -ceq 'Authenticode') -Message ("Expected embedded PE signature type 'Authenticode', got '{0}'." -f $signedPe.SignatureType)
+
+        $manifest = New-ValidHydrateManifest -Id 'signed-pe-declared-script' -Url 'https://example.com/signed-pe.ps1' -Destination 'signed/pe-as-script.ps1' -Size $signedPe.Size -Sha256 $signedPe.Sha256
+        $manifest.artifacts[0].authenticode = @{
+            thumbprint = $signedPe.Thumbprint
+            subject = $signedPe.Subject
+        }
+
+        $manifestPath = Join-Path $tempRoot 'hydrate-authenticode-signed-pe-declared-script.json'
+        Write-JsonUtf8 -Path $manifestPath -Value $manifest
+
+        $staging = Join-Path $tempRoot 'staging-authenticode-signed-pe-declared-script'
+        $downloader = {
+            param($Artifact, $OutFile)
+            Copy-Item -LiteralPath $signedPe.Path -Destination $OutFile -Force
+            return [PSCustomObject]@{ ResponseUri = [System.Uri]$Artifact.Url }
+        }
+
+        Assert-ThrowsError -Action { Invoke-Hydrate -ManifestPath $manifestPath -StagingDirectory $staging -Downloader $downloader } `
+            -ExpectedId 'Build.Authenticode.DeclaredContentMismatch' `
+            -ExpectedMessage "artifact 'signed-pe-declared-script' declared extension '.ps1' expects script content, but downloaded content is binary."
+    }
+
+    Invoke-Case -Name 'Hydrate rejects declared binary extension for signed script content' -Body {
+        $signedScript = New-EmbeddedSignedScriptFixture
+        if ($null -ne $signedScript.PSObject.Properties['__skip'] -and $signedScript.__skip) {
+            return $signedScript
+        }
+
+        $manifest = New-ValidHydrateManifest -Id 'signed-script-binary-declared' -Url 'https://example.com/signed-script.exe' -Destination 'signed/script.exe' -Size $signedScript.Size -Sha256 $signedScript.Sha256
+        $manifest.artifacts[0].authenticode = @{
+            thumbprint = $signedScript.Thumbprint
+            subject = $signedScript.Subject
+        }
+
+        $manifestPath = Join-Path $tempRoot 'hydrate-authenticode-binary-declared.json'
+        Write-JsonUtf8 -Path $manifestPath -Value $manifest
+
+        $staging = Join-Path $tempRoot 'staging-authenticode-binary-declared'
+        $downloader = {
+            param($Artifact, $OutFile)
+            Copy-Item -LiteralPath $signedScript.Path -Destination $OutFile -Force
+            return [PSCustomObject]@{ ResponseUri = [System.Uri]$Artifact.Url }
+        }
+
+        Assert-ThrowsError -Action { Invoke-Hydrate -ManifestPath $manifestPath -StagingDirectory $staging -Downloader $downloader } `
+            -ExpectedId 'Build.Authenticode.DeclaredContentMismatch' `
+            -ExpectedMessage "artifact 'signed-script-binary-declared' declared extension '.exe' expects binary content, but downloaded content is script/non-binary."
     }
 
     Invoke-Case -Name 'Locked modes fail closed with exit code 64' -Body {

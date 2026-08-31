@@ -36,6 +36,18 @@ $script:AuthenticodeExtensions = @(
     '.psd1'
 )
 
+$script:ScriptAuthenticodeExtensions = @(
+    '.ps1',
+    '.psm1',
+    '.psd1'
+)
+
+$script:BinaryAuthenticodeExtensions = @(
+    '.exe',
+    '.dll',
+    '.msi'
+)
+
 function Throw-BuildError {
     param(
         [Parameter(Mandatory = $true)]
@@ -483,6 +495,43 @@ function Assert-NoReparsePointsInExistingChain {
     }
 }
 
+function Get-FileContentClass {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    $stream = $null
+    try {
+        $stream = [System.IO.File]::Open($FilePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
+        $buffer = New-Object byte[] 8
+        $read = $stream.Read($buffer, 0, $buffer.Length)
+
+        if ($read -ge 2 -and $buffer[0] -eq 0x4D -and $buffer[1] -eq 0x5A) {
+            return 'portable-executable'
+        }
+
+        if ($read -ge 8 -and
+            $buffer[0] -eq 0xD0 -and
+            $buffer[1] -eq 0xCF -and
+            $buffer[2] -eq 0x11 -and
+            $buffer[3] -eq 0xE0 -and
+            $buffer[4] -eq 0xA1 -and
+            $buffer[5] -eq 0xB1 -and
+            $buffer[6] -eq 0x1A -and
+            $buffer[7] -eq 0xE1) {
+            return 'msi-ole'
+        }
+    }
+    finally {
+        if ($null -ne $stream) {
+            $stream.Dispose()
+        }
+    }
+
+    return 'script-or-other'
+}
+
 function Assert-AuthenticodeSignature {
     param(
         [Parameter(Mandatory = $true)]
@@ -504,9 +553,30 @@ function Assert-AuthenticodeSignature {
         Throw-BuildError -Id 'Build.Authenticode.UnsupportedDestinationExtension' -Message "artifact '$ArtifactId' destination extension '$extension' is not supported for Authenticode validation."
     }
 
+    $contentClass = Get-FileContentClass -FilePath $FilePath
+    $declaredAsScript = $script:ScriptAuthenticodeExtensions -contains $extension
+    $declaredAsBinary = $script:BinaryAuthenticodeExtensions -contains $extension
+
+    if ($declaredAsScript) {
+        if ($contentClass -eq 'portable-executable' -or $contentClass -eq 'msi-ole') {
+            Throw-BuildError -Id 'Build.Authenticode.DeclaredContentMismatch' -Message "artifact '$ArtifactId' declared extension '$extension' expects script content, but downloaded content is binary."
+        }
+    }
+    elseif ($declaredAsBinary) {
+        if (($extension -eq '.msi' -and $contentClass -ne 'msi-ole') -or
+            (($extension -eq '.exe' -or $extension -eq '.dll') -and $contentClass -ne 'portable-executable')) {
+            Throw-BuildError -Id 'Build.Authenticode.DeclaredContentMismatch' -Message "artifact '$ArtifactId' declared extension '$extension' expects binary content, but downloaded content is script/non-binary."
+        }
+    }
+
     $signature = Get-AuthenticodeSignature -FilePath $FilePath
     if ($null -eq $signature -or $signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
         Throw-BuildError -Id 'Build.Authenticode.InvalidSignature' -Message "artifact '$ArtifactId' Authenticode signature is missing or invalid."
+    }
+
+    $signatureType = [string]$signature.SignatureType
+    if (-not $signatureType.Equals('Authenticode', [System.StringComparison]::OrdinalIgnoreCase)) {
+        Throw-BuildError -Id 'Build.Authenticode.InvalidSignatureType' -Message "artifact '$ArtifactId' signature type '$signatureType' is not supported; expected 'Authenticode'."
     }
 
     if ($null -ne $Requirement.Thumbprint) {
@@ -1051,7 +1121,15 @@ function Invoke-Hydrate {
             Throw-BuildError -Id 'Build.Hydrate.DestinationExists' -Message "Destination collision: '$($destination.RelativePath)' already exists."
         }
 
-        $tempFile = Join-Path $destinationDirectory ("{0}.download.tmp.{1}" -f ([System.IO.Path]::GetFileName($destination.FullPath)), ([Guid]::NewGuid().ToString('N')))
+        $tempFileStem = ([Guid]::NewGuid().ToString('N'))
+        $tempFileName = if ([string]::IsNullOrWhiteSpace($artifact.DestinationExtension)) {
+            "$tempFileStem.download.tmp"
+        }
+        else {
+            "$tempFileStem$($artifact.DestinationExtension)"
+        }
+
+        $tempFile = Join-Path $destinationDirectory $tempFileName
         try {
             $resolvedUri = Invoke-ArtifactDownload -Artifact $artifact -TempFilePath $tempFile -Downloader $Downloader
             if ($resolvedUri.Scheme -ne 'https') {

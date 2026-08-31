@@ -246,6 +246,45 @@
     "extraction_target": "временный каталог вне репозитория",
     "payload_committed": false,
     "tooling": "scripts/security/inspect-npm-tarball.mjs (собственный код репозитория, без сторонних зависимостей) плюс статическое чтение файлов",
+    "resource_limits": {
+      "compressed_stream_read": "инкрементальный лимит 64 МиБ с обрывом соединения через AbortController; Content-Length позволяет отказаться раньше, но не заменяет проверку по мере чтения",
+      "max_metadata_bytes": 8388608,
+      "max_tarball_bytes": 67108864,
+      "max_unpacked_bytes_absolute": 268435456,
+      "effective_unpack_limit_for_this_package": 7582204,
+      "unpack_limit_policy": "min(абсолютный потолок, dist.unpackedSize * 4 + 1 МиБ): архив, распаковывающийся в разы больше заявленного реестром, отбраковывается",
+      "gunzip": "zlib maxOutputLength -- жёсткий потолок выходного буфера, защита от gzip-бомбы",
+      "max_tar_entries": 20000,
+      "max_tar_headers": 60000,
+      "max_entry_bytes": 67108864,
+      "tar_checks_before_allocation": true
+    },
+    "exit_codes": {
+      "2": "аргументы",
+      "3": "сеть и реестр",
+      "4": "несовпадение хешей",
+      "5": "превышение лимита ресурсов (возможная архивная бомба)",
+      "6": "небезопасный архив",
+      "7": "внутренняя ошибка"
+    },
+    "rejection_tests": {
+      "file": "scripts/security/inspect-npm-tarball.test.mjs",
+      "command": "node scripts/security/inspect-npm-tarball.test.mjs",
+      "checks": 31,
+      "network_used": false,
+      "third_party_code_executed": false,
+      "fixtures": "генерируются в памяти из собственных байтов",
+      "covers": [
+        "обрыв сжатого потока сверх лимита и факт вызова abort",
+        "границы: ровно лимит проходит, лимит + 1 байт отбраковывается",
+        "gzip-бомба 16 КиБ сжатых против 16 МиБ распакованных при потолке 1 МиБ",
+        "вывод потолка распаковки из dist.unpackedSize",
+        "лимиты tar: размер записи, суммарный размер, число записей, число заголовков",
+        "запись, выходящая за пределы архива",
+        "11 враждебных типов записей (traversal, абсолютный путь, буква диска, обратный слэш, симлинк, жёсткая ссылка, устройства, fifo, setuid, setgid)",
+        "чистый архив как контроль"
+      ]
+    },
     "coverage": {
       "entries_inventoried": 529,
       "entries_hashed": 529,

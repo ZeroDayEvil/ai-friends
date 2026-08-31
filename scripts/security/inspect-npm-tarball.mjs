@@ -32,18 +32,57 @@
  */
 import { createHash } from 'node:crypto'
 import { gunzipSync } from 'node:zlib'
-import { mkdirSync, writeFileSync, realpathSync } from 'node:fs'
+import { mkdirSync, writeFileSync, realpathSync, rmSync } from 'node:fs'
 import { dirname, join, resolve, relative, isAbsolute, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REGISTRY_HOST = 'registry.npmjs.org'
 const REGISTRY_ORIGIN = `https://${REGISTRY_HOST}`
 const TAR_BLOCK = 512
-const MAX_TARBALL_BYTES = 128 * 1024 * 1024
 
-function fail (message) {
-  console.error(`inspect-npm-tarball: ${message}`)
-  process.exit(1)
+// Лимиты ресурсов. Враждебный архив может быть маленьким в сжатом виде и
+// огромным в распакованном, поэтому ограничивается и то, и другое, причём
+// сжатый поток -- по мере чтения, а не после того, как он уже в памяти.
+export const MAX_METADATA_BYTES = 8 * 1024 * 1024
+export const MAX_TARBALL_BYTES = 64 * 1024 * 1024
+export const MAX_UNPACKED_BYTES = 256 * 1024 * 1024
+export const MAX_TAR_ENTRIES = 20000
+export const MAX_TAR_HEADERS = 60000
+export const MAX_ENTRY_BYTES = 64 * 1024 * 1024
+const UNPACKED_METADATA_FACTOR = 4
+const UNPACKED_SLACK_BYTES = 1024 * 1024
+
+// Коды возврата: по ним вызывающая сторона отличает отказ из-за лимита
+// (возможная архивная бомба) от несовпадения хешей и от сетевой ошибки.
+export const EXIT = {
+  usage: 2,
+  network: 3,
+  integrity: 4,
+  limit: 5,
+  archive: 6,
+  internal: 7
+}
+
+export class AuditError extends Error {
+  constructor (message, code = EXIT.usage) {
+    super(message)
+    this.name = 'AuditError'
+    this.code = code
+  }
+}
+
+function fail (message, code = EXIT.usage) {
+  throw new AuditError(message, code)
+}
+
+/**
+ * Предел распаковки для конкретного пакета. Реестр публикует unpackedSize, и
+ * это лучший из доступных ориентиров: архив, который распаковывается в разы
+ * больше заявленного, к настоящей поставке отношения не имеет.
+ */
+export function unpackLimitFor (unpackedSize) {
+  if (!Number.isInteger(unpackedSize) || unpackedSize <= 0) return MAX_UNPACKED_BYTES
+  return Math.min(MAX_UNPACKED_BYTES, unpackedSize * UNPACKED_METADATA_FACTOR + UNPACKED_SLACK_BYTES)
 }
 
 function parseArgs (argv) {
@@ -73,28 +112,92 @@ function assertRegistryUrl (url, what) {
     return fail(`${what}: значение не разбирается как URL: ${url}`)
   }
   if (parsed.protocol !== 'https:' || parsed.host !== REGISTRY_HOST) {
-    fail(`${what}: источник вне официального реестра: ${url}`)
+    fail(`${what}: источник вне официального реестра: ${url}`, EXIT.network)
   }
   return parsed
 }
 
+/**
+ * Чтение потока с лимитом по мере поступления данных. Именно здесь ловится
+ * сжатый поток произвольной длины: буфер не собирается целиком до проверки,
+ * а превышение обрывает соединение через onExceed.
+ */
+export async function readCappedStream (stream, limit, onExceed, what = 'поток') {
+  if (!stream) fail(`${what}: пустое тело ответа`, EXIT.network)
+  const chunks = []
+  let total = 0
+  for await (const chunk of stream) {
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    total += buf.length
+    if (total > limit) {
+      if (onExceed) onExceed()
+      fail(`${what}: превышен лимит ${limit} байт (получено больше ${total - buf.length}), чтение прервано`, EXIT.limit)
+    }
+    chunks.push(buf)
+  }
+  return Buffer.concat(chunks, total)
+}
+
+/**
+ * Content-Length -- подсказка, а не гарантия: заголовок может отсутствовать или
+ * лгать. Поэтому он только позволяет отказаться раньше, но не заменяет
+ * инкрементальную проверку в readCappedStream.
+ */
+function declaredLength (res, limit, what) {
+  const raw = res.headers.get('content-length')
+  if (raw === null) return null
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value < 0) fail(`${what}: некорректный Content-Length "${raw}"`, EXIT.network)
+  if (value > limit) fail(`${what}: заявленный размер ${value} больше лимита ${limit} байт`, EXIT.limit)
+  return value
+}
+
 async function getJson (url) {
   assertRegistryUrl(url, 'метаданные')
-  const res = await fetch(url, { redirect: 'error', headers: { accept: 'application/json' } })
-  if (!res.ok) fail(`реестр ответил ${res.status} на ${url}`)
-  return { body: await res.json(), contentType: res.headers.get('content-type') }
+  const controller = new AbortController()
+  const res = await fetch(url, {
+    redirect: 'error',
+    signal: controller.signal,
+    headers: { accept: 'application/json' }
+  })
+  if (!res.ok) fail(`реестр ответил ${res.status} на ${url}`, EXIT.network)
+  declaredLength(res, MAX_METADATA_BYTES, 'метаданные')
+  const bytes = await readCappedStream(res.body, MAX_METADATA_BYTES, () => controller.abort(), 'метаданные')
+  let body
+  try {
+    body = JSON.parse(bytes.toString('utf8'))
+  } catch (err) {
+    fail(`метаданные не разбираются как JSON: ${err.message}`, EXIT.network)
+  }
+  return { body, contentType: res.headers.get('content-type') }
 }
 
 async function getBytes (url) {
   assertRegistryUrl(url, 'тарбол')
-  const res = await fetch(url, { redirect: 'error' })
-  if (!res.ok) fail(`реестр ответил ${res.status} на ${url}`)
-  const buf = Buffer.from(await res.arrayBuffer())
-  if (buf.length > MAX_TARBALL_BYTES) fail(`тарбол больше лимита ${MAX_TARBALL_BYTES} байт`)
+  const controller = new AbortController()
+  const res = await fetch(url, { redirect: 'error', signal: controller.signal })
+  if (!res.ok) fail(`реестр ответил ${res.status} на ${url}`, EXIT.network)
+  const contentLength = declaredLength(res, MAX_TARBALL_BYTES, 'тарбол')
+  const bytes = await readCappedStream(res.body, MAX_TARBALL_BYTES, () => controller.abort(), 'тарбол')
   return {
-    bytes: buf,
+    bytes,
     contentType: res.headers.get('content-type'),
-    contentLength: res.headers.get('content-length')
+    contentLength
+  }
+}
+
+/**
+ * Распаковка с жёстким потолком выходного буфера. Без него gzip-бомба в
+ * несколько килобайт разворачивается в гигабайты и выносит процесс.
+ */
+export function gunzipCapped (buf, limit) {
+  try {
+    return gunzipSync(buf, { maxOutputLength: limit })
+  } catch (err) {
+    if (err?.code === 'ERR_BUFFER_TOO_LARGE' || err instanceof RangeError) {
+      fail(`распакованный размер превышает лимит ${limit} байт: похоже на архивную бомбу`, EXIT.limit)
+    }
+    fail(`не удалось распаковать gzip: ${err.message}`, EXIT.archive)
   }
 }
 
@@ -175,9 +278,16 @@ function padded (size) {
   return size + ((TAR_BLOCK - (size % TAR_BLOCK)) % TAR_BLOCK)
 }
 
-export function parseTar (buf) {
+export function parseTar (buf, limits = {}) {
+  const maxEntries = limits.maxEntries ?? MAX_TAR_ENTRIES
+  const maxHeaders = limits.maxHeaders ?? MAX_TAR_HEADERS
+  const maxEntryBytes = limits.maxEntryBytes ?? MAX_ENTRY_BYTES
+  const maxTotalBytes = limits.maxTotalBytes ?? MAX_UNPACKED_BYTES
+
   const entries = []
   let offset = 0
+  let headers = 0
+  let declaredTotal = 0
   let pendingName = null
   let pendingLink = null
   let pendingPax = {}
@@ -185,13 +295,24 @@ export function parseTar (buf) {
   while (offset + TAR_BLOCK <= buf.length) {
     const block = buf.subarray(offset, offset + TAR_BLOCK)
     if (block.every((b) => b === 0)) break
-    if (!headerChecksumOk(block)) fail(`битая контрольная сумма заголовка tar по смещению ${offset}`)
+    if (!headerChecksumOk(block)) fail(`битая контрольная сумма заголовка tar по смещению ${offset}`, EXIT.archive)
+
+    // Служебные заголовки (pax, GNU long name) тоже считаются: иначе архив из
+    // одних заголовков крутит цикл сколько угодно долго.
+    if (++headers > maxHeaders) fail(`заголовков tar больше лимита ${maxHeaders}`, EXIT.limit)
 
     const typeflag = String.fromCharCode(block[156] || 0x30)
     const size = octal(block, 124, 12)
+
+    // Лимиты проверяются до любых выделений и до сдвига смещения.
+    if (!Number.isInteger(size) || size < 0) fail(`некорректный размер записи tar по смещению ${offset}`, EXIT.archive)
+    if (size > maxEntryBytes) fail(`запись tar по смещению ${offset} заявляет ${size} байт при лимите ${maxEntryBytes}`, EXIT.limit)
+    declaredTotal += size
+    if (declaredTotal > maxTotalBytes) fail(`суммарный заявленный размер записей tar превысил ${maxTotalBytes} байт`, EXIT.limit)
+
     const dataStart = offset + TAR_BLOCK
     const dataEnd = dataStart + size
-    if (dataEnd > buf.length) fail(`запись tar выходит за пределы архива по смещению ${offset}`)
+    if (dataEnd > buf.length) fail(`запись tar выходит за пределы архива по смещению ${offset}`, EXIT.archive)
     const next = dataStart + padded(size)
 
     const prefix = str(block, 345, 155)
@@ -222,6 +343,7 @@ export function parseTar (buf) {
     pendingPax = {}
 
     const isFile = typeflag === '0' || typeflag === '\u0000' || typeflag === '7'
+    if (entries.length >= maxEntries) fail(`записей tar больше лимита ${maxEntries}`, EXIT.limit)
     entries.push({
       name,
       type: TYPE_NAMES[typeflag] ?? `unknown(${typeflag})`,
@@ -309,7 +431,7 @@ function safeExtract (entries, outRoot) {
     const target = resolve(realRoot, entry.name)
     const rel = relative(realRoot, target)
     if (rel === '' || rel.startsWith('..') || isAbsolute(rel) || rel.split(sep).includes('..')) {
-      fail(`попытка записи вне каталога назначения: ${entry.name}`)
+      fail(`попытка записи вне каталога назначения: ${entry.name}`, EXIT.archive)
     }
     mkdirSync(dirname(target), { recursive: true })
     // 0600: файл остаётся данными для чтения, бит выполнения из архива не переносится.
@@ -332,27 +454,31 @@ async function main () {
   const specUrl = `${REGISTRY_ORIGIN}/${args.package.replace('/', '%2f')}/${args.version}`
   const meta = await getJson(specUrl)
   const dist = meta.body?.dist ?? {}
-  if (meta.body?.version !== args.version) fail(`реестр вернул версию ${meta.body?.version}`)
-  if (!dist.tarball || !dist.integrity) fail('в метаданных нет dist.tarball/dist.integrity')
+  if (meta.body?.version !== args.version) fail(`реестр вернул версию ${meta.body?.version}`, EXIT.integrity)
+  if (!dist.tarball || !dist.integrity) fail('в метаданных нет dist.tarball/dist.integrity', EXIT.integrity)
 
   const tarballUrl = assertRegistryUrl(dist.tarball, 'dist.tarball')
   const expectedSuffix = `/${args.package}/-/${args.package.split('/').pop()}-${args.version}.tgz`
   if (!decodeURIComponent(tarballUrl.pathname).endsWith(expectedSuffix)) {
-    fail(`dist.tarball не соответствует пакету и версии: ${tarballUrl.pathname}`)
+    fail(`dist.tarball не соответствует пакету и версии: ${tarballUrl.pathname}`, EXIT.integrity)
   }
 
   const download = await getBytes(dist.tarball)
   const sums = digests(download.bytes)
 
   const [algo, expected] = String(dist.integrity).split('-')
-  if (algo !== 'sha512') fail(`ожидается SRI sha512, получено ${algo}`)
-  if (sums.sha512_base64 !== expected) fail('SHA-512 тарбола не совпал с dist.integrity: архив не тот, что опубликован')
-  if (dist.shasum && sums.sha1_hex !== dist.shasum) fail('SHA-1 не совпал с dist.shasum')
-  if (download.contentLength && Number(download.contentLength) !== download.bytes.length) {
-    fail(`Content-Length ${download.contentLength} не равен фактическому размеру ${download.bytes.length}`)
+  if (algo !== 'sha512') fail(`ожидается SRI sha512, получено ${algo}`, EXIT.integrity)
+  if (sums.sha512_base64 !== expected) fail('SHA-512 тарбола не совпал с dist.integrity: архив не тот, что опубликован', EXIT.integrity)
+  if (dist.shasum && sums.sha1_hex !== dist.shasum) fail('SHA-1 не совпал с dist.shasum', EXIT.integrity)
+  if (download.contentLength !== null && download.contentLength !== download.bytes.length) {
+    fail(`Content-Length ${download.contentLength} не равен фактическому размеру ${download.bytes.length}`, EXIT.integrity)
   }
 
-  const entries = parseTar(gunzipSync(download.bytes))
+  // Потолок распаковки выводится из unpackedSize в метаданных: даже пройдя
+  // проверку хеша, архив не должен разворачиваться в разы больше заявленного.
+  const unpackLimit = unpackLimitFor(dist.unpackedSize)
+  const tar = gunzipCapped(download.bytes, unpackLimit)
+  const entries = parseTar(tar, { maxTotalBytes: unpackLimit })
 
   const violations = []
   for (const entry of entries) {
@@ -417,6 +543,16 @@ async function main () {
       entry_count: inventory.length,
       file_count: byType.file ?? 0
     },
+    limits: {
+      max_tarball_bytes: MAX_TARBALL_BYTES,
+      max_unpacked_bytes: MAX_UNPACKED_BYTES,
+      effective_unpack_limit: unpackLimit,
+      max_tar_entries: MAX_TAR_ENTRIES,
+      max_entry_bytes: MAX_ENTRY_BYTES,
+      unpacked_within_declared: dist.unpackedSize
+        ? tar.length <= unpackLimit && inventory.reduce((sum, item) => sum + item.size, 0) === dist.unpackedSize
+        : null
+    },
     entry_types: byType,
     entry_classes: byClass,
     violations,
@@ -426,8 +562,16 @@ async function main () {
   mkdirSync(outRoot, { recursive: true })
 
   if (args.extract) {
-    if (violations.length) fail(`распаковка отменена: нарушений ${violations.length}`)
-    report.extracted_files = safeExtract(entries, join(outRoot, 'extracted'))
+    if (violations.length) fail(`распаковка отменена: нарушений ${violations.length}`, EXIT.archive)
+    const extractRoot = join(outRoot, 'extracted')
+    try {
+      report.extracted_files = safeExtract(entries, extractRoot)
+    } catch (err) {
+      // Частично распакованное дерево не оставляем: оно уже содержит чужие
+      // файлы, а проверки на нём не завершились.
+      rmSync(extractRoot, { recursive: true, force: true })
+      throw err
+    }
   }
 
   writeFileSync(join(outRoot, 'inventory.json'), JSON.stringify(report, null, 2))
@@ -441,5 +585,9 @@ const invokedDirectly = process.argv[1] &&
   resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))
 
 if (invokedDirectly) {
-  main().catch((err) => fail(err?.stack ?? String(err)))
+  main().catch((err) => {
+    const known = err instanceof AuditError
+    console.error(`inspect-npm-tarball: ${known ? err.message : (err?.stack ?? String(err))}`)
+    process.exit(known ? err.code : EXIT.internal)
+  })
 }

@@ -14,15 +14,56 @@ secrets/
 infra/cloudflare/*.json
 !infra/cloudflare/desired-state.json
 
-# Форк electerm-web ведётся отдельным репозиторием (собственная история upstream),
-# сюда клонируется рабочая копия и в этот репозиторий не коммитится.
-apps/
-
 # Сборка и зависимости
 node_modules/
 dist/
 build/
 *.log
+
+# electerm-web — проверенный снимок upstream в намеренном monorepo. Сама
+# исходная tree, в том числе build-скрипты, должна быть видна Git.
+!apps/
+!apps/electerm-web/
+!apps/electerm-web/**
+
+# Только локальные/сгенерированные результаты импортированного приложения.
+apps/electerm-web/node_modules/
+apps/electerm-web/dist/
+apps/electerm-web/.cache/
+apps/electerm-web/.npm/
+apps/electerm-web/.nyc_output/
+apps/electerm-web/coverage/
+apps/electerm-web/test-results/
+apps/electerm-web/temp/
+apps/electerm-web/work/
+apps/electerm-web/data/
+apps/electerm-web/data1/
+apps/electerm-web/database/
+apps/electerm-web/electerm_session_logs/
+apps/electerm-web/logs/
+apps/electerm-web/pids/
+apps/electerm-web/.next/
+apps/electerm-web/.nuxt/
+apps/electerm-web/.serverless/
+apps/electerm-web/.fusebox/
+apps/electerm-web/.dynamodb/
+apps/electerm-web/build/Release/
+apps/electerm-web/src/electerm-react/
+apps/electerm-web/src/client/electerm-react/
+
+# Локальные секреты и служебные файлы приложения не должны быть переоткрыты
+# предыдущим правилом !apps/electerm-web/**.
+apps/electerm-web/.env
+apps/electerm-web/*.env
+!apps/electerm-web/*.sample.env
+!apps/electerm-web/.env.sample
+apps/electerm-web/*.key
+apps/electerm-web/*.pem
+apps/electerm-web/secrets/
+apps/electerm-web/*.log
+apps/electerm-web/*.pid
+apps/electerm-web/*.pid.lock
+apps/electerm-web/*.tgz
 # Выводы приёмочных прогонов -- доказательная часть отчётов в docs/audit,
 # на них ссылаются документы, поэтому они версионируются.
 !docs/audit/*.log

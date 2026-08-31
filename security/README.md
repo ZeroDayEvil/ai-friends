@@ -57,11 +57,40 @@
 - `install_scripts` — есть ли исполняемые скрипты установки;
 - `verdict` — `keep`, `replace`, `pin`, `remove`.
 
+## Импортированный electerm-web
+
+`apps/electerm-web` — это не локальная рабочая копия, а намеренно
+версионируемый снимок upstream. `security/upstream.lock.json` фиксирует:
+
+- полный Git commit и tree SHA;
+- SHA-256 архива GitHub codeload;
+- точный список файлов, их размеры, SHA-256 и Git blob SHA-1;
+- MIT-лицензию и результат проверки подписи коммита.
+
+`node scripts/check-pins.mjs` только читает JSON и байты файлов. Он не
+устанавливает пакеты, не вызывает lifecycle-скрипты и не импортирует код из
+`apps/electerm-web`. Он сверяет весь снимок с lock-файлом, отвергает ссылки и
+не позволяет добавить незафиксированный файл. При импорте архив дополнительно
+проверяется на reparse path до извлечения.
+
+Намеренные исключения лежат в `security/policy-exceptions.json`. Каждое
+исключение ограничено конкретным путём и SHA-256 неизменённого upstream-файла;
+широких исключений для `apps/`, `node_modules` или generated/vendor деревьев
+нет. Поэтому новый lifecycle hook, registry mirror или плавающая зависимость
+не могут стать разрешёнными из-за старого исключения.
+
+Переход от патчей 5.1.20 описан в
+[`security/electerm-web-migration-ledger.md`](electerm-web-migration-ledger.md).
+
 ## Проверка в CI
 
-Workflow `.github/workflows/security.yml` падает, если:
+Workflow `.github/workflows/ci.yml` падает, если:
 
 - в `externals.json` есть запись с `pin`, не соответствующим формату;
 - в репозитории появился docker-образ, указанный по тегу без digest;
 - в коде встречается `curl ... | bash`, `iwr ... | iex` или подобный шаблон;
-- `osv-scanner` или `trivy` находят уязвимости уровня high и выше.
+- lifecycle-скрипт, registry host или плавающая зависимость не имеют
+  hash-bound исключения;
+- байты `apps/electerm-web` не совпадают с `upstream.lock.json`;
+- когда они будут закреплённо добавлены, `osv-scanner` или `trivy` находят
+  уязвимости уровня high и выше.

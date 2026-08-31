@@ -1,0 +1,1 @@
+This fixture becomes an apps/ package-manager lock only inside a temporary test repository.

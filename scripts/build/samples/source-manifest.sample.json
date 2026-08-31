@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "scopeRoot": "scripts/build",
+  "files": [
+    {
+      "path": "scripts/build/Build.ps1",
+      "size": 1234,
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "path": "scripts/build/Build.Primitives.psm1",
+      "size": 5678,
+      "sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+    }
+  ]
+}

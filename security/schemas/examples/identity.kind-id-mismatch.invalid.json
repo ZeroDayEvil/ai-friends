@@ -1,0 +1,15 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:identity",
+  "principal": { "kind": "human", "id": "agent:runner-7f3a" },
+  "display_name": "Вид human при идентификаторе агента",
+  "state": "active",
+  "created_at": "2026-08-30T09:00:00Z",
+  "authentication": {
+    "method": "cf-access",
+    "issuer": "https://team-name.cloudflareaccess.example",
+    "audience": "application-aud-tag-placeholder",
+    "algorithms": ["RS256"],
+    "mfa": true,
+    "trusted_only_when": "direct_origin_closed"
+  }
+}

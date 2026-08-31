@@ -1,0 +1,25 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:tool-descriptor",
+  "tool": "file.read",
+  "tool_version": 1,
+  "descriptor_hash": "sha256:c3d4e5f607182930c3d4e5f607182930c3d4e5f607182930c3d4e5f607182930",
+  "title": "Чтение файла из зарегистрированного корня",
+  "summary": "Читает файл по паре «корень плюс относительный путь». Абсолютные пути, UNC и пространство устройств не принимаются, содержимое отдаётся из уже открытого дескриптора.",
+  "semantics": "read_only",
+  "effect_class": "read",
+  "risk": "low",
+  "release": "A",
+  "supervision": "supervised",
+  "requires_capabilities": ["file.read"],
+  "approval_policy": "never",
+  "cancellable": "hard",
+  "retry": { "safe": true, "dedup_window_seconds": 0 },
+  "args": {
+    "fields": [
+      { "name": "path", "type": "path", "required": true },
+      { "name": "max_bytes", "type": "integer", "required": false, "max_bytes": 1048576 }
+    ]
+  },
+  "output": { "provenance": "tool_output", "max_bytes": 1048576, "streamed": false },
+  "audit": { "record_args": ["path", "max_bytes"], "record_output": "hash" }
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:connect-request#/$defs/result",
+  "request_id": "e19faeb3-c231-4404-b586-91021324ab5c",
+  "connection_handle": "conn_bm9uY2Utc2FtcGxlLTAxNg",
+  "opened_at": "2026-08-30T10:00:00Z",
+  "expires_at": "2026-08-30T10:30:00Z",
+  "owner": { "kind": "agent", "id": "agent:runner-7f3a" },
+  "session_id": "sess-9f2b",
+  "target": { "kind": "machine_endpoint", "id": "win-lab-01", "protocol": "ssh" },
+  "protocol": "ssh",
+  "host_key_status": "pinned",
+  "host_key_fingerprint": "sha256:4b5c6d7e8f9012344b5c6d7e8f9012344b5c6d7e8f9012344b5c6d7e8f901234",
+  "audit_event_id": "9c4a5f6e-7d8c-4ebf-a031-4c5d6e7f8096"
+}

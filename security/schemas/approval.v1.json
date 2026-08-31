@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-friends:schema:agent:v1:approval",
+  "title": "Одобрение человека",
+  "type": "object",
+  "description": "Одобрение привязано к четырём вещам сразу: к хешу нормализованных аргументов, к тому, кто будет выполнять, к одноразовому значению и к сроку. Убрать любую из четырёх привязок — значит получить известный обход. Без хеша аргументов агент одобряет одно, а выполняет другое. Без привязки к исполнителю одобрение переиспользует другой агент. Без nonce одобрение воспроизводится повторно. Без срока оно всплывает через неделю в другой обстановке.",
+  "properties": {
+    "schema": { "const": "urn:ai-friends:schema:agent:v1:approval" },
+    "approval_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "nonce": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{22}$",
+      "description": "128 бит случайности в base64url. Значение хранится на стороне сервера и вычёркивается при использовании; повторное предъявление даёт approval_replayed."
+    },
+    "policy_decision_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "request_id": {
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid",
+      "description": "Запрос, к которому относится одобрение. Обязателен. Без него одобрение привязано к хешу аргументов, но не к конкретной попытке: два одновременных запроса с одинаковыми аргументами становятся взаимозаменяемыми, и одобрение, выданное на разобранный оператором первый, забирает второй."
+    },
+    "trace_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/trace_id" },
+    "tool": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*){1,3}$", "maxLength": 64 },
+    "tool_version": { "type": "integer", "minimum": 1 },
+    "descriptor_hash": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
+    "args_hash": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256" },
+    "canon": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/canon" },
+    "actor": {
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref",
+      "description": "Кто получает право выполнить. Одобрение непередаваемо."
+    },
+    "act": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/actor_chain" },
+    "target": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/resource_ref" },
+    "approver": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+    "approver_session_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+    "requested_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "approved_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "expires_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "ttl_seconds": {
+      "type": "integer",
+      "minimum": 30,
+      "maximum": 900,
+      "description": "Равно expires_at − approved_at. Дублируется ради машинной проверки предела: у критического риска предел жёстче, и он выражается схемой, а не комментарием."
+    },
+    "scope": { "enum": ["single_use", "count", "window"] },
+    "max_uses": { "type": "integer", "minimum": 1, "maximum": 64 },
+    "uses": { "type": "integer", "minimum": 0, "maximum": 64 },
+    "channel": {
+      "enum": ["ui", "oob"],
+      "description": "oob — подтверждение по независимому каналу. Требуется, когда одобряется действие на устройстве, интерфейс которого может быть под контролем нарушителя."
+    },
+    "presented_digest": {
+      "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/sha256",
+      "description": "Хеш человекочитаемого представления, показанного одобряющему. Связывает «что видел человек» с «что будет выполнено»: без этого достаточно показать безобидный текст, а хеш аргументов посчитать от другого."
+    },
+    "presentation": { "const": "afrender/1" },
+    "risk": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/risk" },
+    "policy": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/policy_ref" },
+    "revoked": { "type": "boolean" },
+    "revoked_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" }
+  },
+  "required": [
+    "schema",
+    "approval_id",
+    "nonce",
+    "policy_decision_id",
+    "request_id",
+    "trace_id",
+    "tool",
+    "tool_version",
+    "descriptor_hash",
+    "args_hash",
+    "canon",
+    "actor",
+    "act",
+    "target",
+    "approver",
+    "approver_session_id",
+    "requested_at",
+    "approved_at",
+    "expires_at",
+    "ttl_seconds",
+    "scope",
+    "max_uses",
+    "uses",
+    "channel",
+    "presented_digest",
+    "presentation",
+    "risk",
+    "policy"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "properties": { "approver": { "properties": { "kind": { "const": "human" } } } },
+      "description": "Одобряет только человек. Служебный субъект, выдающий одобрения, — это отсутствие одобрений."
+    },
+    {
+      "if": { "properties": { "scope": { "const": "single_use" } }, "required": ["scope"] },
+      "then": { "properties": { "max_uses": { "const": 1 } } }
+    },
+    {
+      "if": { "properties": { "risk": { "const": "critical" } }, "required": ["risk"] },
+      "then": {
+        "properties": {
+          "scope": { "const": "single_use" },
+          "ttl_seconds": { "maximum": 300 },
+          "channel": { "const": "oob" }
+        },
+        "description": "Критическое действие одобряется однократно, живёт не дольше пяти минут и подтверждается по независимому каналу."
+      }
+    },
+    {
+      "if": { "properties": { "risk": { "const": "high" } }, "required": ["risk"] },
+      "then": { "properties": { "ttl_seconds": { "maximum": 600 } } }
+    },
+    {
+      "if": { "properties": { "revoked": { "const": true } }, "required": ["revoked"] },
+      "then": { "required": ["revoked_at"] }
+    }
+  ]
+}

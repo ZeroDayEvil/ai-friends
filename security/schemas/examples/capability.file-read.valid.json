@@ -1,0 +1,27 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:capability",
+  "capability_id": "cap:read-reports-2026q3",
+  "action": "file.read",
+  "selector": {
+    "kind": "path",
+    "root_id": "reports",
+    "subpath": "2026/q3",
+    "recursive": true,
+    "max_depth": 4
+  },
+  "granted_to": { "kind": "agent", "id": "agent:runner-7f3a" },
+  "granted_by": { "kind": "human", "id": "human:op-a1b2" },
+  "granted_at": "2026-08-30T09:10:00Z",
+  "expires_at": "2026-08-30T17:10:00Z",
+  "constraints": {
+    "max_output_bytes": 1048576,
+    "max_files": 200,
+    "allow_untrusted_provenance": false
+  },
+  "release": "A",
+  "supervision": "supervised",
+  "risk": "low",
+  "approval_policy": "never",
+  "delegable": false,
+  "justification": "Сводка по отчётам смены; область ограничена кварталом и временем дежурства."
+}

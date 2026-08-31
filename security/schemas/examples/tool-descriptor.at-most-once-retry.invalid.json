@@ -1,0 +1,25 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:tool-descriptor",
+  "tool": "file.transfer.put",
+  "tool_version": 1,
+  "descriptor_hash": "sha256:d4e5f60718293a4bd4e5f60718293a4bd4e5f60718293a4bd4e5f60718293a4b",
+  "title": "Передача файла на цель",
+  "summary": "Попытка объявить безопасным повтор действия, которое применяется ровно один раз.",
+  "semantics": "at_most_once",
+  "effect_class": "mutate_remote",
+  "risk": "medium",
+  "release": "A",
+  "supervision": "supervised",
+  "requires_capabilities": ["file.transfer.put"],
+  "approval_policy": "always",
+  "cancellable": "cooperative",
+  "retry": { "safe": true, "dedup_window_seconds": 60 },
+  "args": {
+    "fields": [
+      { "name": "path", "type": "path", "required": true },
+      { "name": "machine", "type": "machine_ref", "required": true }
+    ]
+  },
+  "output": { "provenance": "tool_output", "max_bytes": 4096, "streamed": false },
+  "audit": { "record_args": ["path", "machine"], "record_output": "hash" }
+}

@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-friends:schema:agent:v1:share",
+  "title": "Определение опубликованного ресурса",
+  "type": "object",
+  "description": "Публикация файлов наружу — отдельный объект со сроком, областью и обязательной аутентификацией, а не режим работы сервера. Отправная точка здесь конкретна: в исходном electerm публикация по HTTP отдаёт домашний каталог целиком и без пароля, а встроенный FTP по умолчанию слушает все интерфейсы. Схема сделана так, чтобы оба этих состояния были невыразимы, а не отговариваемы в документации.",
+  "properties": {
+    "schema": { "const": "urn:ai-friends:schema:agent:v1:share" },
+    "share_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+    "kind": {
+      "enum": ["http", "sftp_subtree"],
+      "description": "Открытого FTP в перечислении нет. Он передаёт учётные данные и содержимое открытым текстом, не имеет прав на уровне объектов и требует диапазона портов для пассивного режима. Для отдачи файлов достаточно HTTP с токеном, для двусторонней работы — подкаталог по SFTP."
+    },
+    "root": {
+      "type": "object",
+      "properties": {
+        "root_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+        "subpath": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/relpath" }
+      },
+      "required": ["root_id", "subpath"],
+      "additionalProperties": false,
+      "description": "Корень — запись реестра, помеченная shareable, а не произвольный каталог. Домашний каталог пользователя таким корнем быть не может: рядом с рабочими файлами там лежат ключи SSH, профили браузера и хранилища паролей."
+    },
+    "mode": { "enum": ["read_only", "read_write"] },
+    "bind": { "$ref": "#/$defs/bind" },
+    "auth": { "$ref": "#/$defs/auth" },
+    "created_by": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+    "created_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "expires_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "ttl_seconds": {
+      "type": "integer",
+      "minimum": 60,
+      "maximum": 86400,
+      "description": "Публикация без срока превращается в постоянную дверь, о которой через месяц никто не помнит. Сутки — верхний предел; продление означает создание новой публикации с новой записью в журнале. Согласованность с парой created_at и expires_at проверяется инвариантом share-expiry-matches-ttl: без этой сверки достаточно объявить ttl_seconds равным 60 и поставить expires_at через год, и запись выглядит короткоживущей, оставаясь бессрочной."
+    },
+    "approval_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "limits": { "$ref": "#/$defs/limits" },
+    "index_listing": {
+      "type": "boolean",
+      "description": "Перечисление содержимого каталога. По умолчанию false: список файлов сам по себе является сведениями о системе, а для передачи известного файла он не нужен."
+    },
+    "follow_reparse_points": {
+      "const": false,
+      "description": "Символические ссылки и точки соединения внутри публикуемого поддерева не разыменовываются. Ссылка, созданная кем угодно с правом записи в этот каталог, иначе выводит отдачу за пределы корня."
+    },
+    "revoked": { "type": "boolean" },
+    "revoked_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" }
+  },
+  "required": [
+    "schema",
+    "share_id",
+    "kind",
+    "root",
+    "mode",
+    "bind",
+    "auth",
+    "created_by",
+    "created_at",
+    "expires_at",
+    "ttl_seconds",
+    "approval_id",
+    "limits",
+    "index_listing",
+    "follow_reparse_points"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "mode": { "const": "read_write" } }, "required": ["mode"] },
+      "then": {
+        "properties": {
+          "auth": { "properties": { "method": { "enum": ["mtls", "share_token"] } } },
+          "limits": { "required": ["max_upload_bytes", "max_files"] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "revoked": { "const": true } }, "required": ["revoked"] },
+      "then": { "required": ["revoked_at"] }
+    }
+  ],
+  "$defs": {
+    "bind": {
+      "type": "object",
+      "description": "Где слушает публикация. Прежняя форма позволяла вызывающему объявить interface: loopback рядом с публичным адресом, и тогда правило «за пределами петлевого интерфейса только TLS» не срабатывало: оно смотрело на слово, а слушал сокет адрес. Класс адреса теперь вычисляет служба разбором самого адреса и подтверждает подписью, а требование TLS привязано к адресу, а не к названию.",
+      "properties": {
+        "address": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/bind_address" },
+        "address_class": {
+          "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/ip_class",
+          "description": "Определяется службой. Совпадение с фактическим адресом проверяется инвариантом share-address-class-matches."
+        },
+        "classification": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/attestation" },
+        "port": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/port" },
+        "tls": { "type": "boolean" },
+        "allow_from": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[12][0-9]|3[0-2])$" },
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "description": "Список источников. Присутствие обязательно: даже за петлевым интерфейсом полезно ограничить круг, а за его пределами это единственный дешёвый рубеж, работающий до аутентификации."
+        }
+      },
+      "required": ["address", "address_class", "classification", "port", "tls", "allow_from"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "not": {
+              "properties": { "address": { "pattern": "^(127\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}|::1|\\[::1\\])$" } },
+              "required": ["address"]
+            }
+          },
+          "then": {
+            "properties": { "tls": { "const": true } },
+            "description": "Условие смотрит на сам адрес, а не на его объявленный класс. Токен публикации в открытом HTTP перехватывается на любом транзитном участке, и короткий срок этого не меняет: воспользоваться им нужно один раз."
+          }
+        },
+        {
+          "if": {
+            "properties": { "address_class": { "const": "loopback" } },
+            "required": ["address_class"]
+          },
+          "then": {
+            "properties": { "address": { "pattern": "^(127\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}|::1|\\[::1\\])$" } }
+          }
+        }
+      ]
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "required": {
+          "const": true,
+          "description": "Значения false не существует. Публикация без аутентификации — это то, от чего мы уходим, и она не должна быть выразима одной правкой конфигурации."
+        },
+        "method": { "enum": ["share_token", "mtls"] },
+        "token_ref": {
+          "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug",
+          "description": "Ссылка на выданный токен типа af-share. Само значение токена в определении публикации не хранится."
+        },
+        "token_placement": {
+          "const": "authorization_header",
+          "description": "Токен в строке запроса запрещён: адреса попадают в журналы прокси, в историю браузера и в заголовок Referer при переходе на внешний сайт."
+        },
+        "default_password": {
+          "const": false,
+          "description": "Утверждение, а не настройка. Пароль по умолчанию — причина, по которой встроенный FTP исходного проекта представляет собой готовую точку входа в сеть."
+        }
+      },
+      "required": ["required", "method", "token_placement", "default_password"],
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "max_download_bytes": { "type": "integer", "minimum": 0, "maximum": 107374182400 },
+        "max_upload_bytes": { "type": "integer", "minimum": 0, "maximum": 107374182400 },
+        "max_files": { "type": "integer", "minimum": 1, "maximum": 100000 },
+        "max_connections": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "content_disposition": {
+          "const": "attachment",
+          "description": "Отдача только вложением вместе с запретом угадывания типа. Иначе загруженный кем-то HTML-файл исполняется в источнике нашего узла и получает доступ к его данным."
+        },
+        "sniff_protection": { "const": true }
+      },
+      "required": ["max_download_bytes", "max_connections", "content_disposition", "sniff_protection"],
+      "additionalProperties": false
+    }
+  }
+}

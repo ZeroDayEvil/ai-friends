@@ -1,0 +1,24 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:identity",
+  "principal": { "kind": "service", "id": "service:af-exec-privileged" },
+  "display_name": "Исполнитель с оставленной отладочной привилегией",
+  "state": "active",
+  "created_at": "2026-08-30T08:30:00Z",
+  "authentication": { "method": "os-account" },
+  "service_role": "executor",
+  "os_account": {
+    "name": "svc_af_exec_dbg",
+    "kind": "virtual_service_account",
+    "privileged": false,
+    "denied_privileges": [
+      "SeBackupPrivilege",
+      "SeRestorePrivilege",
+      "SeTakeOwnershipPrivilege",
+      "SeAssignPrimaryTokenPrivilege",
+      "SeLoadDriverPrivilege",
+      "SeSecurityPrivilege",
+      "SeCreateSymbolicLinkPrivilege"
+    ],
+    "can_write": ["work_root", "quarantine_root"]
+  }
+}

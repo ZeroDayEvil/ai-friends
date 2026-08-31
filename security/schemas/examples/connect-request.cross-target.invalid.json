@@ -1,0 +1,42 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:connect-request",
+  "request_id": "e19faeb3-c231-4404-b586-91021324ab5f",
+  "trace_id": "a1b2c3d4e5f60718a1b2c3d4e5f60718",
+  "issued_at": "2026-08-30T10:25:00Z",
+  "deadline": "2026-08-30T10:25:30Z",
+  "profile_ref": { "kind": "credential_profile", "id": "domain-admin-profile" },
+  "target": { "kind": "machine_endpoint", "id": "win-dc-01", "protocol": "ssh" },
+  "authorization": {
+    "profile_ref": { "kind": "credential_profile", "id": "lab-service-account" },
+    "target": { "kind": "machine_endpoint", "id": "win-lab-01", "protocol": "ssh" },
+    "protocol": "ssh",
+    "hop_via": [],
+    "actor": { "kind": "agent", "id": "agent:runner-7f3a" },
+    "request_id": "e19faeb3-c231-4404-b586-91021324ab5f",
+    "policy": {
+      "version": "3.4.1",
+      "digest": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+      "signature": {
+        "alg": "Ed25519",
+        "key_id": "policy-signing-2026q3",
+        "value": "c2FtcGxlLXNpZ25hdHVyZS1ub3QtYS1yZWFsLWtleS1wb2xpY3ktLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ"
+      }
+    },
+    "expires_at": "2026-08-30T10:25:30Z",
+    "signature": {
+      "alg": "Ed25519",
+      "key_id": "broker-authorization-2026q3",
+      "value": "c2FtcGxlLXNpZ25hdHVyZS1ub3QtYS1yZWFsLWtleS1icm9rZXItLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ"
+    }
+  },
+  "hop_via": [],
+  "purpose": "Разрешение выдано на лабораторную машину, а применить его просят к контроллеру домена.",
+  "actor": { "kind": "agent", "id": "agent:runner-7f3a" },
+  "act": [
+    { "kind": "agent", "id": "agent:runner-7f3a" },
+    { "kind": "human", "id": "human:op-a1b2" }
+  ],
+  "session_id": "sess-9f2b",
+  "capability_ref": { "capability_id": "cap:exec-service-restart", "action": "credential.connect" },
+  "host_key_policy": "known_only"
+}

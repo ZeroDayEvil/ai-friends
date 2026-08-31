@@ -1,0 +1,16 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:identity",
+  "principal": { "kind": "service", "id": "service:af-broker" },
+  "display_name": "Брокер учётных данных",
+  "state": "active",
+  "created_at": "2026-08-30T08:31:00Z",
+  "authentication": { "method": "mtls" },
+  "service_role": "broker",
+  "os_account": {
+    "name": "svc_af_broker",
+    "kind": "gmsa",
+    "privileged": false,
+    "denied_privileges": ["SeDebugPrivilege", "SeImpersonatePrivilege", "SeLoadDriverPrivilege"],
+    "can_write": ["credentials"]
+  }
+}

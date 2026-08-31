@@ -1,0 +1,53 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:egress-decision",
+  "decision_id": "d08e9da2-b120-43f3-a475-8091021324b4",
+  "trace_id": "b2c3d4e5f6071829b2c3d4e5f6071829",
+  "decided_at": "2026-08-30T10:48:00Z",
+  "actor": {
+    "kind": "agent",
+    "id": "agent:browser-2c8d"
+  },
+  "origin": "browser_worker",
+  "destination_group": "model-provider",
+  "requested": {
+    "host": "metadata.attacker.example",
+    "port": 443,
+    "scheme": "https"
+  },
+  "resolved_ips": [
+    {
+      "address": "169.254.169.254",
+      "class": "public"
+    }
+  ],
+  "classification": {
+    "attested_by": {
+      "kind": "service",
+      "id": "service:af-policy"
+    },
+    "attested_at": "2026-08-30T10:48:00Z",
+    "signature": {
+      "alg": "Ed25519",
+      "key_id": "address-classification-2026q3",
+      "value": "c2FtcGxlLXNpZ25hdHVyZS1ub3QtYS1yZWFsLWtleS1jbGFzc2lmaWVyLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ"
+    }
+  },
+  "decision": "allow",
+  "reason": {
+    "code": "ok"
+  },
+  "rule_id": "egress-model-provider",
+  "policy_version": {
+    "version": "3.4.1",
+    "digest": "sha256:a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "signature": {
+      "alg": "Ed25519",
+      "key_id": "policy-signing-2026q3",
+      "value": "c2FtcGxlLXNpZ25hdHVyZS1ub3QtYS1yZWFsLWtleS1wb2xpY3ktLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ"
+    }
+  },
+  "pin_ips": true,
+  "via_proxy": true,
+  "ttl_seconds": 300,
+  "audit_event_id": "9c4a5f6e-7d8c-4ebf-a031-4c5d6e7f8098"
+}

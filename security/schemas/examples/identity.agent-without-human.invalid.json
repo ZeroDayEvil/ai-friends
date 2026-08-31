@@ -1,0 +1,15 @@
+{
+  "schema": "urn:ai-friends:schema:agent:v1:identity",
+  "principal": { "kind": "agent", "id": "agent:orphan-9d1c" },
+  "display_name": "Агент без человека за спиной",
+  "state": "active",
+  "created_at": "2026-08-30T09:05:00Z",
+  "authentication": { "method": "control-plane-token" },
+  "agent_profile": {
+    "runtime": "workflow_runner",
+    "max_session_seconds": 3600,
+    "supervision": "supervised",
+    "release": "A",
+    "accepts_provenance": ["operator", "policy", "system"]
+  }
+}

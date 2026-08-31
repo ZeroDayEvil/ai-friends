@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-friends:schema:agent:v1:policy-decision",
+  "title": "Решение политики по запросу",
+  "type": "object",
+  "description": "Решение принимается отдельной службой и записывается целиком: и вердикт, и версия политики, и сработавшие правила. Умолчание — запрет: недоступность службы политики даёт отказ policy_unavailable, а не выполнение «пока разбираемся». Решение имеет срок годности, потому что права могут быть отозваны между решением и выполнением.",
+  "properties": {
+    "schema": { "const": "urn:ai-friends:schema:agent:v1:policy-decision" },
+    "decision_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "request_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/uuid" },
+    "trace_id": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/trace_id" },
+    "evaluated_at": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/timestamp" },
+    "evaluator": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/principal_ref" },
+    "policy_version": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/policy_version" },
+    "decision": { "enum": ["allow", "deny", "allow_with_approval", "allow_with_constraints"] },
+    "reasons": {
+      "type": "array",
+      "items": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/reason" },
+      "minItems": 1,
+      "maxItems": 8
+    },
+    "matched_rules": {
+      "type": "array",
+      "items": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/slug" },
+      "maxItems": 16,
+      "uniqueItems": true
+    },
+    "effective_constraints": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/constraints" },
+    "obligations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/obligation" },
+      "maxItems": 12,
+      "description": "Обязательства исполнителя. Невыполнимое обязательство означает отказ: разрешение выдано под условие, и условие не может быть проигнорировано как необязательное."
+    },
+    "ttl_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300,
+      "description": "Сколько решение действительно. Пять минут — верхний предел: за это время успевает отработать отзыв полномочия, и при этом решение не приходится перезапрашивать посреди одного вызова."
+    },
+    "risk": { "$ref": "urn:ai-friends:schema:agent:v1:common#/$defs/risk" },
+    "required_approval": { "$ref": "#/$defs/required_approval" },
+    "fail_mode": {
+      "const": "closed",
+      "description": "Присутствует как утверждение, а не как настройка: значения open в контракте нет. Поле оставлено, чтобы намерение было видно в каждой записи журнала."
+    }
+  },
+  "required": [
+    "schema",
+    "decision_id",
+    "request_id",
+    "trace_id",
+    "evaluated_at",
+    "evaluator",
+    "policy_version",
+    "decision",
+    "reasons",
+    "ttl_seconds",
+    "risk",
+    "fail_mode"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "decision": { "const": "allow_with_approval" } }, "required": ["decision"] },
+      "then": { "required": ["required_approval"] }
+    },
+    {
+      "if": { "properties": { "decision": { "const": "allow_with_constraints" } }, "required": ["decision"] },
+      "then": { "required": ["effective_constraints"] }
+    },
+    {
+      "if": { "properties": { "decision": { "const": "deny" } }, "required": ["decision"] },
+      "then": {
+        "properties": { "reasons": { "items": { "properties": { "code": { "not": { "const": "ok" } } } } } }
+      }
+    },
+    {
+      "if": { "properties": { "risk": { "const": "critical" } }, "required": ["risk"] },
+      "then": {
+        "properties": { "decision": { "enum": ["deny", "allow_with_approval"] } },
+        "description": "Критический риск не разрешается без одобрения ни при каких совпадениях правил."
+      }
+    }
+  ],
+  "$defs": {
+    "obligation": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "record_session",
+            "limit_output_bytes",
+            "redact_output",
+            "require_supervisor_present",
+            "pin_destination_ips",
+            "quarantine_downloads",
+            "notify_approver",
+            "single_use_token",
+            "read_only_mount"
+          ]
+        },
+        "limit": { "type": "integer", "minimum": 0, "maximum": 1073741824 },
+        "detail": { "type": "string", "maxLength": 256 }
+      },
+      "required": ["type"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "limit_output_bytes" } }, "required": ["type"] },
+          "then": { "required": ["limit"] }
+        }
+      ]
+    },
+    "required_approval": {
+      "type": "object",
+      "properties": {
+        "policy": { "enum": ["first_use", "always"] },
+        "min_approver_role": { "enum": ["approver", "admin"] },
+        "ttl_seconds": { "type": "integer", "minimum": 30, "maximum": 900 },
+        "distinct_from_actor": {
+          "const": true,
+          "description": "Одобряющий не может совпадать с тем, кто выполняет. Для агента это выполняется автоматически, для человека — нет, и проверка обязана быть явной."
+        },
+        "presentation": {
+          "enum": ["afrender/1"],
+          "description": "Формат человекочитаемого представления запроса. Хеш именно этого представления связывается с одобрением, чтобы «одобрил то, что увидел» было проверяемым утверждением."
+        }
+      },
+      "required": ["policy", "min_approver_role", "ttl_seconds", "distinct_from_actor", "presentation"],
+      "additionalProperties": false
+    }
+  }
+}

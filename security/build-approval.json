@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "approved": false,
+  "source_commit": null,
+  "dependency_manifest_sha256": null,
+  "native_manifest_sha256": null,
+  "approved_at": null,
+  "approved_by": [],
+  "reason": "Build execution remains locked until source, browser UI, dependency, and native-code audits are complete."
+}
+

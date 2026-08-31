@@ -13,29 +13,37 @@ jobs:
     name: Политика зависимостей
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '24'
+      - name: Тесты политики без выполнения upstream
+        run: node --test scripts/test-check-pins.mjs
       - name: Проверка пинов и запрета исполнения скачанного кода
         run: node scripts/check-pins.mjs
+      - name: Проверка происхождения в GitHub
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/check-pins.mjs --online
 
   shell:
     name: Оболочка
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: shellcheck
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq shellcheck
-          shellcheck --severity=warning $(git ls-files '*.sh')
+          # apps/electerm-web is immutable upstream data. Its full tree remains
+          # hash-verified by the policy job; ShellCheck is for scripts owned here.
+          shellcheck --severity=warning $(git ls-files '*.sh' ':!apps/electerm-web/**')
 
   powershell:
     name: PowerShell
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: PSScriptAnalyzer
         shell: pwsh
         run: |

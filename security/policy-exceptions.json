@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "ignored_tree_paths": [
+    {
+      "path": "apps/electerm-web/node_modules",
+      "kind": "vendor",
+      "reason": "Dependency installation output is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/dist",
+      "kind": "generated",
+      "reason": "Build output is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/.cache",
+      "kind": "generated",
+      "reason": "Tool cache is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/.npm",
+      "kind": "vendor",
+      "reason": "Local npm cache is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/.nyc_output",
+      "kind": "generated",
+      "reason": "Coverage output is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/coverage",
+      "kind": "generated",
+      "reason": "Coverage output is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/test-results",
+      "kind": "generated",
+      "reason": "Test output is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/temp",
+      "kind": "generated",
+      "reason": "Temporary runtime output is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/work",
+      "kind": "generated",
+      "reason": "Temporary runtime output is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/data",
+      "kind": "runtime-state",
+      "reason": "Application data is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/data1",
+      "kind": "runtime-state",
+      "reason": "Application data is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/database",
+      "kind": "runtime-state",
+      "reason": "Application database is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/electerm_session_logs",
+      "kind": "runtime-state",
+      "reason": "Session logs are not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/logs",
+      "kind": "runtime-state",
+      "reason": "Application logs are not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/pids",
+      "kind": "runtime-state",
+      "reason": "Process metadata is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/.next",
+      "kind": "generated",
+      "reason": "Framework build output is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/.nuxt",
+      "kind": "generated",
+      "reason": "Framework build output is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/.serverless",
+      "kind": "generated",
+      "reason": "Deployment build output is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/.fusebox",
+      "kind": "generated",
+      "reason": "Bundler cache is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/.dynamodb",
+      "kind": "runtime-state",
+      "reason": "Local DynamoDB state is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/build/Release",
+      "kind": "generated",
+      "reason": "Native addon output is not part of the imported Git tree."
+    },
+    {
+      "path": "apps/electerm-web/src/electerm-react",
+      "kind": "generated",
+      "reason": "A build helper may materialize this package output locally."
+    },
+    {
+      "path": "apps/electerm-web/src/client/electerm-react",
+      "kind": "generated",
+      "reason": "A build helper may materialize this package output locally."
+    }
+  ],
+  "approved_lifecycle_scripts": [
+    {
+      "path": "apps/electerm-web/package.json",
+      "script": "install",
+      "command_sha256": "69f64caf474e3b99ea4698c6573083fc3c1eb3a144b890ce4dbe656458eeb62d",
+      "source_sha256": "edb4199c3a30b5fcc8a2856a949161f95aa5c162b4605207ddb8e3ffcbabd61a",
+      "reason": "The immutable upstream manifest declares this hook. This import-only PR never invokes it; a hardened build design requires separate review."
+    }
+  ],
+  "approved_floating_dependency_manifests": [
+    {
+      "path": "apps/electerm-web/package.json",
+      "source_sha256": "edb4199c3a30b5fcc8a2856a949161f95aa5c162b4605207ddb8e3ffcbabd61a",
+      "reason": "The imported upstream manifest is retained byte-for-byte. package-lock.json is present, but replacing manifest ranges is deferred to a reviewed dependency-hardening change."
+    }
+  ],
+  "approved_registry_hosts": [
+    {
+      "path": "apps/electerm-web/package-lock.json",
+      "source_sha256": "3a2953e0c45f4c942ba826b7ea915e5ad24e56bb31d35828954859ec84d5113c",
+      "hosts": [
+        "registry.npmmirror.com"
+      ],
+      "reason": "The exact imported upstream lock contains 106 historical resolved URLs for this mirror. Dependencies are not installed in this PR; a reviewed lock refresh must remove the exception."
+    }
+  ]
+}

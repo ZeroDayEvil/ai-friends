@@ -7,7 +7,7 @@
       "id": "electerm-web",
       "kind": "git",
       "official_source": "https://github.com/electerm/electerm-web",
-      "pin": "commit:ab011d652e3750cb21b8f49bc0f3504f283036cd",
+      "pin": "commit:f1deaf02fead7faa1bfb4381f69fbb734ea7f95f",
       "license": "MIT",
       "network_at_runtime": [
         "https://ai.electerm.org/api/ai",
@@ -18,7 +18,7 @@
       ],
       "install_scripts": true,
       "verdict": "pin",
-      "notes": "Есть install-скрипт в корневом package.json; динамическая догрузка модулей через npm.js/custom-require.js."
+      "notes": "Снимок исходников закреплён в security/upstream.lock.json. Этот import-only PR не заявляет новую оценку зависимостей или egress; существующие записи сохранены как свидетельства аудита 5.1.20."
     },
     {
       "id": "electerm-desktop",

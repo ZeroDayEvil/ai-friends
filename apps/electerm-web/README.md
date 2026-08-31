@@ -1,0 +1,211 @@
+<h1 align="center" style="padding-top: 60px;padding-bottom: 40px;">
+    <a href="https://electerm.github.io/electerm">
+        <img src="https://github.com/electerm/electerm-resource/raw/master/static/images/electerm.png", alt="" />
+    </a>
+</h1>
+
+[English](README.md) | [中文](README_cn.md)
+
+# electerm-web [![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/intent/tweet?text=Open%20sourced%20terminal%2Fssh%2Fsftp%20client(linux%2C%20mac%2C%20win)&url=https%3A%2F%2Fgithub.com%2Felecterm%2Felecterm-web&hashtags=electerm,ssh,terminal,sftp,vnc,rdp,spice,ftp,telnet,serialport)
+
+This is web app version of [electerm app](https://github.com/electerm/electerm), running in browser, almost has the same features as the desktop version.
+
+[![GitHub version](https://img.shields.io/github/release/electerm/electerm/all.svg)](https://github.com/electerm/electerm/releases)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/electerm/electerm-dev/blob/master/LICENSE)
+[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/electerm?label=Sponsors)](https://github.com/sponsors/electerm)
+
+electerm is open-sourced terminal/ssh/sftp/telnet/serialport/RDP/VNC/Spice/ftp client(Linux, Mac, Windows, Android, HarmonyOS, iOS).
+
+Besides mainstream Windows/macOS/Linux/Android, electerm also supports HarmonyOS, iOS, and older systems — Ubuntu 18, Windows 7, macOS 10+, and special Chinese Linux distributions such as UOS, Kylin, and LoongArch (both old-world and new-world).
+
+<p align="center">
+  <a href="https://electerm.org">Homepage / Downloads</a> ·
+  <a href="https://theme.electerm.org">Theme</a> ·
+  <a href="https://github.com/electerm/electerm-web-docker">Docker</a> ·
+  <a href="https://demo.electerm.org">Online demo</a> ·
+  <a href="https://github.com/electerm/electerm-android">Android</a> ·
+  <a href="https://github.com/electerm/electerm-harmony">HarmonyOS</a> ·
+  <a href="https://apps.apple.com/cn/app/electerm/id6792971552">Apple App Store</a> ·
+  <a href="https://appgallery.huawei.com/app/detail?id=org.electerm.electerm">Huawei AppGallery</a> ·
+  <a href="https://www.microsoft.com/store/apps/9NCN7272GTFF">Microsoft Store</a> ·
+  <a href="https://snapcraft.io/electerm">Snap Store</a> ·
+  <a href="https://repos.electerm.org/deb">deb repo</a> ·
+  <a href="https://repos.electerm.org/rpm">rpm repo</a>
+</p>
+
+- 🌐 **[electerm online](https://cloud.electerm.org)** — Public free online electerm app
+- 🤖 **[electerm AI](https://ai.electerm.org)** — Free AI for electerm users
+- 💻 **[electerm-web](https://github.com/electerm/electerm-web)** — Web app version running in browser (including mobile device)
+
+<div align="center">
+  <img src="https://github.com/electerm/electerm-resource/raw/master/static/images/electerm.gif", alt="" />
+</div>
+
+## Features
+
+- Works as a terminal/file manager or ssh/telnet/serialport/RDP/VNC/WEB/Spice/sftp/ftp client
+- Global hotkey to toggle window visibility (similar to guake, default is `ctrl + 2`)
+- Multi platform(linux, mac, win)
+- 🇺🇸 🇨🇳 🇧🇷 🇷🇺 🇪🇸 🇫🇷 🇹🇷 🇭🇰 🇯🇵 🇸🇦 🇩🇪 🇰🇷 Multi-language support([electerm-locales](https://github.com/electerm/electerm-locales), contributions/fixes welcome)
+- Double click to directly edit (small) remote files.
+- Auth with publicKey + password.
+- Support Zmodem(rz, sz).
+- Support ssh tunnel.
+- Support [Trzsz](https://github.com/trzsz/trzsz)(trz/tsz), similar to rz/sz, and compatible with tmux.
+- Transparent window(Mac, win).
+- Terminal background image.
+- Global/session proxy.
+- Quick commands
+- UI/terminal theme
+- Sync bookmarks/themes/quick commands to github/gitee secret gist
+- Quick input to one or all terminals.
+- Init from url query string [wiki](https://github.com/electerm/electerm-web/wiki/Init-from-url-query-string)
+- Support mobile device(responsive design)
+- AI assistant integration (supporting [DeepSeek](https://www.deepseek.com), OpenAI, and other AI APIs) to help with command suggestions, script writing, and explaining selected terminal content
+
+## Migration from v2 to v3
+
+Since electerm-web v3, the application uses SQLite instead of NeDB for better performance and stability. If you're upgrading from v2 and have existing data, you'll need to migrate your data.
+
+### Migration Steps
+
+1. **Install electerm-data-tool**:
+
+   ```bash
+   npm install -g electerm-data-tool
+   ```
+
+2. **Export your data from NeDB**:
+
+   ```bash
+      # data folder should have a nedb-database child folder
+      electerm-data-tool --data-path "/path/to/your/data-folder-which-has-nedb-database-sub-folder" --app-type web migrate
+   ```
+
+3. **Start electerm-web v3** and go to the **Data Sync** panel
+
+4. **Import your data**: Upload the `data.json` file in the Data Sync panel to restore your data
+
+## Download
+
+todo
+
+## Upgrade
+
+todo
+
+## Support
+
+Would love to hear from you, please tell me what you think, [submit an issue](https://github.com/electerm/electerm-web/issues/new/choose), [Start a new discussion](https://github.com/electerm/electerm-web/discussions/new), [create/fix language files](https://github.com/electerm/electerm-locales) or create pull requests, all welcome.
+
+## Sponsor this project
+
+github sponsor
+
+[https://github.com/sponsors/electerm](https://github.com/sponsors/electerm)
+
+kofi
+
+[https://ko-fi.com/zhaoxudong](https://ko-fi.com/zhaoxudong)
+
+wechat donate
+
+[![wechat donate](https://electerm.org/electerm-wechat-donate.png)](https://github.com/electerm)
+
+## Prerequisites
+
+- git
+- Nodejs 24, npm, recommend use [fnm](https://github.com/Schniz/fnm) to install nodejs/npm
+- python/make tools, for Linux: `sudo apt install -y make python g++ build-essential`, for MacOS: install Xcode, for Windows, install `vs studio` or `npm install --global --production windows-build-tools`
+
+## One line script to deploy from source code
+
+for Linux or Mac
+
+```sh
+curl -o- https://electerm.org/scripts/one-line-web.sh | bash
+```
+or
+
+```sh
+wget -qO- https://electerm.org/scripts/one-line-web.sh | bash
+```
+
+for Windows
+
+```powershell
+Invoke-WebRequest -Uri "https://electerm.org/scripts/one-line-web.bat" -OutFile "one-line-web.bat"
+cmd.exe /c ".\one-line-web.bat"
+
+```
+
+## Deploy from docker image
+
+Check [electerm-web-docker](https://github.com/electerm/electerm-web-docker)
+
+## Dev
+
+```bash
+# tested in ubuntu16.04+/mac os 10.13+ only
+# needs nodejs/npm, suggest using nvm to install nodejs/npm
+# https://github.com/creationix/nvm
+# with nodejs 22.x
+
+git clone git@github.com:electerm/electerm-web.git
+cd electerm-web
+cp .sample.env .env
+# edit DB_PATH to set db path, default path ./database
+# to use same data as desktop electerm
+# for Mac OS DB_PATH="/Users/<your-user-name>/Library/Application Support/electerm"
+# for Linux OS DB_PATH="/home/<your-user-name>/.config/electerm"
+# for Windows OS DB_PATH="C:\\Users\\<your-user-name>\\AppData\\Roaming\\electerm"
+npm config set legacy-peer-deps true
+npm i
+
+# start webpack dev server
+npm start
+
+# in a separate terminal session run app
+npm run dev
+
+#then visit http://127.0.0.1:5580 with browser
+
+# code format check
+npm run lint
+
+# code format fix
+npm run fix
+```
+
+## Build && run in production
+
+```sh
+npm run build
+
+# run production server
+npm run prod
+
+# or ./build/bin/run-prod.sh
+
+#then visit http://127.0.0.1:5577 with browser
+```
+
+## Run in server
+
+```sh
+# Edit .env, set
+ENABLE_AUTH=1 # if not enabled, everyone can use it without login
+DISABLE_LOCAL_TERMINAL=1 # disable local terminal for safety
+SERVER_SECRET=some-server-secret
+SERVER_PASS=some-login-pass-word
+
+# run prod app
+./run-electerm-web.sh
+
+# Check examples/nginx.conf examples/nginx-ssl.conf  for domain binding nginx conf example
+```
+
+## License
+
+MIT

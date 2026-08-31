@@ -16,23 +16,40 @@ on:
   push:
     paths:
       - .github/workflows/copilot-setup-steps.yml
+      - .github/copilot-instructions.md
+      - security/build-approval.json
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+      - .github/copilot-instructions.md
+      - security/build-approval.json
 
 jobs:
   copilot-setup-steps:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          node-version: '24'
+          persist-credentials: false
 
-      - name: shellcheck
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.20.0'
+          check-latest: false
+
+      - name: Ограничения пакетных инструментов
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq shellcheck
+          {
+            echo 'NPM_CONFIG_IGNORE_SCRIPTS=true'
+            echo 'NPM_CONFIG_AUDIT=false'
+            echo 'NPM_CONFIG_FUND=false'
+            echo 'NPM_CONFIG_UPDATE_NOTIFIER=false'
+            echo 'NPM_CONFIG_REGISTRY=https://registry.npmjs.org/'
+            echo 'COREPACK_ENABLE_DOWNLOAD_PROMPT=0'
+          } >> "$GITHUB_ENV"
 
       # Быстрый предохранитель: если агент начинает работу в репозитории, где
       # политика уже нарушена, он должен узнать об этом сразу, а не после того,

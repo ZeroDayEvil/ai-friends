@@ -1,0 +1,7 @@
+{
+  "name": "floating-fixture",
+  "version": "1.0.0",
+  "dependencies": {
+    "example": "^1.2.3"
+  }
+}

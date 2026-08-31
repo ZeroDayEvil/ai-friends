@@ -88,6 +88,9 @@ tree. Он сверяет весь снимок с lock-файлом, отвер
 только с `api.github.com` и `codeload.github.com`: Git commit/tree metadata и
 архив сверяются с lock-файлом, с лимитом 5 MiB на JSON и 64 MiB на архив.
 CI выполняет оба режима; ни один не извлекает или исполняет upstream-код.
+Отдельная ShellCheck job анализирует только shell-скрипты, принадлежащие этому
+репозиторию: immutable upstream shell-файлы покрывает hash/policy verifier, а
+не стиль чужого исходного кода.
 
 Намеренные исключения лежат в `security/policy-exceptions.json`. Каждое
 исключение ограничено конкретным путём и SHA-256 неизменённого upstream-файла;

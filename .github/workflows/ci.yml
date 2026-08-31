@@ -35,7 +35,9 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq shellcheck
-          shellcheck --severity=warning $(git ls-files '*.sh')
+          # apps/electerm-web is immutable upstream data. Its full tree remains
+          # hash-verified by the policy job; ShellCheck is for scripts owned here.
+          shellcheck --severity=warning $(git ls-files '*.sh' ':!apps/electerm-web/**')
 
   powershell:
     name: PowerShell
